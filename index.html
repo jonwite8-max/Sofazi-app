@@ -1,0 +1,1677 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0f172a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Sofazi">
+<meta name="description" content="نظام إدارة الأعمال الجزائري المتكامل">
+<title>Sofazi — النظام المركزي</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+<style>
+:root{--bg:#f0f4f8;--surface:#fff;--surface2:#f7fafc;--border:#e2e8f0;--text:#1a202c;--text2:#64748b;--text3:#94a3b8;--primary:#1e40af;--primary-light:#dbeafe;--accent:#0ea5e9;--success:#059669;--success-light:#d1fae5;--danger:#dc2626;--danger-light:#fee2e2;--warning:#d97706;--warning-light:#fef3c7;--purple:#7c3aed;--purple-light:#ede9fe;--nav-bg:#0f172a;--top-h:60px;--nav-w:260px;--radius:16px;--shadow:0 4px 24px rgba(0,0,0,.07);--shadow-lg:0 8px 40px rgba(0,0,0,.12)}
+body.dark{--bg:#070d1a;--surface:#101828;--surface2:#0d1525;--border:#1a2540;--text:#e2e8f0;--text2:#94a3b8;--text3:#475569;--primary-light:#1e3a8a;--success-light:#052e16;--danger-light:#450a0a;--warning-light:#431407;--purple-light:#2e1065;--shadow:0 4px 24px rgba(0,0,0,.4);--shadow-lg:0 8px 40px rgba(0,0,0,.6)}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);transition:background .3s,color .3s}
+body{overflow-x:hidden}
+
+/* SPLASH */
+#splash{position:fixed;inset:0;background:#0f172a;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .6s,visibility .6s}
+#splash.hidden{opacity:0;visibility:hidden;pointer-events:none}
+.splash-logo{width:100px;height:100px;background:linear-gradient(135deg,#1e40af,#0ea5e9);border-radius:28px;display:flex;align-items:center;justify-content:center;font-size:3.2rem;margin-bottom:20px;animation:splashPop .7s cubic-bezier(.34,1.56,.64,1) both;box-shadow:0 0 80px rgba(30,64,175,.6)}
+@keyframes splashPop{from{transform:scale(.3) rotate(-15deg);opacity:0}to{transform:scale(1) rotate(0);opacity:1}}
+.splash-name{font-size:2.2rem;font-weight:900;color:#fff;letter-spacing:.06em;animation:fadeUp .5s .3s both}
+.splash-ver{font-size:.85rem;color:#3b82f6;margin-top:4px;animation:fadeUp .5s .5s both}
+.splash-bar{width:140px;height:3px;background:#1e293b;border-radius:10px;margin-top:44px;overflow:hidden;animation:fadeUp .4s .4s both}
+.splash-prog{height:100%;background:linear-gradient(90deg,#1e40af,#0ea5e9,#38bdf8);animation:splashLoad 1.8s ease-out forwards}
+@keyframes splashLoad{from{width:0}to{width:100%}}
+@keyframes fadeUp{from{transform:translateY(12px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+/* OFFLINE */
+#offlineBanner{position:fixed;top:var(--top-h);left:0;right:0;background:#d97706;color:#fff;text-align:center;padding:8px;font-size:.8rem;font-weight:600;z-index:90;transform:translateY(-100%);transition:transform .3s;display:flex;align-items:center;justify-content:center;gap:8px}
+#offlineBanner.show{transform:translateY(0)}
+
+/* APP LAYOUT */
+#app{display:grid;grid-template-rows:var(--top-h) 1fr;grid-template-columns:var(--nav-w) 1fr;min-height:100vh}
+
+/* TOPBAR */
+#topbar{grid-column:1/-1;background:var(--nav-bg);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 16px;position:sticky;top:0;z-index:100;box-shadow:0 2px 20px rgba(0,0,0,.35)}
+.topbar-left{display:flex;align-items:center;gap:12px}
+.brand-icon{width:38px;height:38px;background:linear-gradient(135deg,#1e40af,#0ea5e9);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:900;color:#fff}
+.brand-name{font-weight:900;font-size:1.15rem;color:#fff}
+.brand-ver{font-size:.6rem;color:#475569;margin-top:-1px}
+.topbar-right{display:flex;align-items:center;gap:6px}
+.icon-btn{width:38px;height:38px;border:none;background:rgba(255,255,255,.07);border-radius:10px;color:#94a3b8;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.95rem;transition:all .2s}
+.icon-btn:hover{background:rgba(255,255,255,.14);color:#fff}
+#menuToggle{display:none}
+
+/* SIDEBAR */
+#sidebar{background:var(--nav-bg);grid-row:2;position:sticky;top:var(--top-h);height:calc(100vh - var(--top-h));overflow-y:auto;scrollbar-width:thin;scrollbar-color:#1e293b transparent;transition:transform .3s cubic-bezier(.4,0,.2,1)}
+.sidebar-user{padding:18px 16px;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:12px}
+.user-av{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:800;flex-shrink:0;color:#fff}
+.user-nm{font-weight:700;font-size:.9rem;color:#e2e8f0}
+.user-rl{font-size:.72rem;color:#475569;margin-top:2px}
+.sidebar-sec{padding:10px 0 0}
+.sidebar-lbl{padding:8px 16px 3px;font-size:.62rem;text-transform:uppercase;letter-spacing:.12em;color:#334155;font-weight:700}
+.nav-item{display:flex;align-items:center;gap:11px;padding:10px 16px;cursor:pointer;color:#64748b;font-size:.88rem;font-weight:500;transition:all .2s;border-right:3px solid transparent;margin:1px 0;text-decoration:none}
+.nav-item i{width:18px;text-align:center;font-size:.9rem;transition:transform .2s}
+.nav-item:hover{color:#cbd5e1;background:rgba(255,255,255,.04)}
+.nav-item.active{color:#fff;background:rgba(30,64,175,.25);border-right-color:#3b82f6}
+.nav-item.active i{transform:scale(1.1);color:#60a5fa}
+.sidebar-footer{padding:12px 16px 16px;border-top:1px solid rgba(255,255,255,.06);margin-top:6px}
+.btn-logout{width:100%;padding:10px;background:rgba(220,38,38,.1);border:1px solid rgba(220,38,38,.2);border-radius:10px;color:#f87171;cursor:pointer;font-family:inherit;font-size:.85rem;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s}
+.btn-logout:hover{background:rgba(220,38,38,.2)}
+
+/* MAIN */
+#main{grid-row:2;overflow-y:auto;padding:24px;min-height:calc(100vh - var(--top-h))}
+
+/* CARDS */
+.card{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);box-shadow:var(--shadow);overflow:hidden}
+.card-header{padding:15px 20px;border-bottom:1px solid var(--border);font-weight:700;font-size:.92rem;display:flex;align-items:center;justify-content:space-between}
+.card-body{padding:20px}
+
+/* STAT CARDS */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:20px}
+.stat-card{border-radius:var(--radius);padding:18px;position:relative;overflow:hidden;border:none;box-shadow:var(--shadow);cursor:pointer;transition:transform .2s}
+.stat-card:hover{transform:translateY(-3px)}
+.stat-card::after{content:'';position:absolute;bottom:-20px;right:-10px;width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.07)}
+.stat-card.blue{background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#fff}
+.stat-card.green{background:linear-gradient(135deg,#064e3b,#059669);color:#fff}
+.stat-card.red{background:linear-gradient(135deg,#7f1d1d,#dc2626);color:#fff}
+.stat-card.amber{background:linear-gradient(135deg,#78350f,#d97706);color:#fff}
+.stat-card.purple{background:linear-gradient(135deg,#4c1d95,#7c3aed);color:#fff}
+.stat-icon{font-size:1.4rem;opacity:.8;margin-bottom:8px}
+.stat-val{font-size:1.35rem;font-weight:900;line-height:1}
+.stat-label{font-size:.72rem;opacity:.75;margin-top:3px;font-weight:500}
+
+/* BUTTONS */
+.btn{padding:9px 16px;border-radius:10px;border:none;cursor:pointer;font-family:inherit;font-size:.84rem;font-weight:600;display:inline-flex;align-items:center;gap:6px;transition:all .2s;text-decoration:none;white-space:nowrap}
+.btn i{font-size:.82rem}
+.btn-primary{background:var(--primary);color:#fff;box-shadow:0 2px 8px rgba(30,64,175,.3)}
+.btn-primary:hover{background:#1d4ed8;transform:translateY(-1px);box-shadow:0 4px 14px rgba(30,64,175,.4)}
+.btn-success{background:var(--success);color:#fff;box-shadow:0 2px 8px rgba(5,150,105,.25)}
+.btn-success:hover{background:#047857}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-danger:hover{background:#b91c1c}
+.btn-warning{background:var(--warning);color:#fff}
+.btn-warning:hover{background:#b45309}
+.btn-info{background:var(--accent);color:#fff}
+.btn-info:hover{background:#0284c7}
+.btn-secondary{background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
+.btn-secondary:hover{background:var(--border)}
+.btn-purple{background:var(--purple);color:#fff}
+.btn-purple:hover{background:#6d28d9}
+.btn-sm{padding:6px 12px;font-size:.78rem;border-radius:8px}
+.btn-xs{padding:4px 9px;font-size:.72rem;border-radius:7px}
+
+/* FORMS */
+.form-group{margin-bottom:13px}
+.form-label{font-size:.8rem;font-weight:600;color:var(--text2);margin-bottom:5px;display:block}
+.form-control{width:100%;padding:10px 13px;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-family:inherit;font-size:.88rem;transition:all .2s}
+.form-control:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(30,64,175,.12);background:var(--surface)}
+.form-control::placeholder{color:var(--text3)}
+textarea.form-control{resize:vertical;min-height:75px}
+.row-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+@media(max-width:600px){.row-2,.row-3{grid-template-columns:1fr}}
+
+/* TABLES */
+.table-wrap{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:.83rem}
+thead th{background:var(--surface2);padding:11px 13px;font-weight:700;color:var(--text2);font-size:.74rem;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border);white-space:nowrap}
+tbody td{padding:11px 13px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:var(--surface2)}
+
+/* BADGES */
+.badge{padding:3px 10px;border-radius:20px;font-size:.7rem;font-weight:700;display:inline-block;white-space:nowrap}
+.badge-success{background:var(--success-light);color:var(--success)}
+.badge-danger{background:var(--danger-light);color:var(--danger)}
+.badge-warning{background:var(--warning-light);color:var(--warning)}
+.badge-info{background:#e0f2fe;color:#0284c7}
+.badge-purple{background:var(--purple-light);color:var(--purple)}
+body.dark .badge-info{background:#075985;color:#7dd3fc}
+
+/* MODALS */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:500;backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;padding:16px;animation:fadeIn .2s}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal-box{background:var(--surface);border-radius:20px;width:100%;max-width:540px;max-height:92vh;overflow-y:auto;box-shadow:var(--shadow-lg);animation:slideUp .28s cubic-bezier(.34,1.56,.64,1)}
+.modal-box.modal-lg{max-width:740px}
+@keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal-header{padding:18px 22px 15px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:var(--surface);z-index:1}
+.modal-title{font-size:1rem;font-weight:800}
+.modal-body{padding:18px 22px}
+.modal-footer{padding:14px 22px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end}
+.modal-close{width:32px;height:32px;border:none;background:var(--surface2);border-radius:8px;cursor:pointer;color:var(--text2);font-size:.95rem;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.modal-close:hover{background:var(--danger-light);color:var(--danger)}
+
+/* TOAST */
+#toastContainer{position:fixed;bottom:76px;left:50%;transform:translateX(-50%);z-index:9000;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
+.toast{background:#0f172a;color:#e2e8f0;padding:11px 18px;border-radius:40px;display:flex;align-items:center;gap:9px;font-size:.855rem;font-weight:600;box-shadow:0 8px 30px rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.1);animation:toastIn .3s cubic-bezier(.34,1.56,.64,1);white-space:nowrap}
+@keyframes toastIn{from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1}}
+.toast.out{animation:toastOut .25s forwards}
+@keyframes toastOut{to{transform:translateY(14px);opacity:0}}
+.toast-ic{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.72rem;flex-shrink:0}
+.toast.success .toast-ic{background:rgba(5,150,105,.2);color:#34d399}
+.toast.error .toast-ic{background:rgba(220,38,38,.2);color:#f87171}
+.toast.info .toast-ic{background:rgba(14,165,233,.2);color:#38bdf8}
+
+/* LOADING */
+#loadingOverlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:8000;display:none;align-items:center;justify-content:center;backdrop-filter:blur(3px)}
+.loader{width:46px;height:46px;border:4px solid rgba(255,255,255,.15);border-top-color:#60a5fa;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* PAGE HEADER */
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;gap:12px;flex-wrap:wrap}
+.page-title{font-size:1.25rem;font-weight:800}
+.page-title small{font-size:.77rem;color:var(--text3);font-weight:400;display:block;margin-top:1px}
+
+/* SEARCH */
+.search-wrap{position:relative;margin-bottom:14px}
+.search-wrap input{padding-right:42px}
+.search-icon{position:absolute;right:13px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:.88rem;pointer-events:none}
+
+/* PAGINATION */
+.pagination{display:flex;justify-content:center;gap:5px;margin-top:18px;flex-wrap:wrap}
+.page-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;font-family:inherit;font-size:.82rem;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.page-btn:hover,.page-btn.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+
+/* PROGRESS */
+.progress-wrap{height:5px;background:var(--border);border-radius:10px;overflow:hidden}
+.progress-fill{height:100%;border-radius:10px;background:linear-gradient(90deg,#1e40af,#0ea5e9);transition:width .6s}
+
+/* INFO ROWS */
+.info-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border);gap:12px}
+.info-row:last-child{border-bottom:none}
+.info-label{color:var(--text2);font-size:.83rem}
+.info-val{font-weight:700;font-size:.88rem}
+
+/* CUSTOMER CARD */
+.cust-card{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);padding:15px;transition:all .2s}
+.cust-card:hover{border-color:var(--primary);box-shadow:0 4px 20px rgba(30,64,175,.1);transform:translateY(-2px)}
+.cust-amounts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin:10px 0}
+.amt-box{background:var(--surface2);padding:7px 6px;border-radius:9px;text-align:center}
+.amt-val{font-size:.82rem;font-weight:800}
+.amt-lbl{font-size:.62rem;color:var(--text3);margin-top:1px}
+
+/* WORKER CARD */
+.worker-card{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);padding:15px}
+.worker-av{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:1rem;font-weight:800;flex-shrink:0;color:#fff}
+
+/* INVOICE */
+.algerian-invoice{background:#fff;border-radius:20px;padding:26px;font-size:12.5px;color:#1a202c}
+.inv-co-ar{font-size:1.45rem;font-weight:900;color:#0b2b42}
+.inv-co-fr{font-size:.85rem;color:#4a627a;margin-top:2px}
+.inv-reg{background:#f8fafc;padding:7px 12px;border-radius:18px;font-size:.62rem;display:flex;flex-wrap:wrap;gap:10px;margin-top:9px}
+.inv-table{width:100%;border-collapse:collapse;margin:14px 0;font-size:.78rem}
+.inv-table th,.inv-table td{border:1px solid #cbd5e1;padding:7px 8px;text-align:center}
+.inv-table th{background:#eef2ff;font-weight:700}
+.inv-total-row{display:flex;justify-content:flex-end;gap:36px;padding:5px 0;font-size:.82rem}
+.inv-total-row.grand{border-top:2px solid #1e3a5f;padding-top:7px;font-weight:800;font-size:.9rem}
+.inv-sigs{display:flex;justify-content:space-between;margin-top:24px;padding-top:14px;border-top:1px solid #e2e8f0}
+.sig-box{text-align:center;font-size:.72rem;color:#64748b}
+.sig-line{border-top:1px solid #aaa;margin-top:28px;padding-top:5px;width:120px;margin:28px auto 0}
+
+/* LOGIN */
+#loginScreen{position:fixed;inset:0;background:linear-gradient(135deg,#070d1a 0%,#0c1e3c 60%,#071428 100%);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
+#loginScreen.visible{display:flex}
+.login-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:24px;padding:34px 30px;width:100%;max-width:380px;backdrop-filter:blur(24px)}
+.login-logo{width:68px;height:68px;background:linear-gradient(135deg,#1e40af,#0ea5e9);border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:1.9rem;margin:0 auto 16px;box-shadow:0 0 40px rgba(30,64,175,.4)}
+.login-title{text-align:center;color:#fff;font-size:1.7rem;font-weight:900}
+.login-sub{text-align:center;color:#475569;font-size:.82rem;margin-bottom:26px}
+.login-input{width:100%;padding:11px 15px;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.1);border-radius:11px;color:#fff;font-family:inherit;font-size:.88rem;transition:all .2s;margin-bottom:10px}
+.login-input:focus{outline:none;border-color:#3b82f6;background:rgba(255,255,255,.11)}
+.login-input::placeholder{color:#334155}
+.login-btn{width:100%;padding:12px;background:linear-gradient(135deg,#1e40af,#2563eb);border:none;border-radius:11px;color:#fff;font-family:inherit;font-size:.92rem;font-weight:700;cursor:pointer;transition:all .2s;margin-top:4px}
+.login-btn:hover{transform:translateY(-1px);box-shadow:0 4px 20px rgba(30,64,175,.45)}
+.login-tabs{display:flex;gap:4px;background:rgba(255,255,255,.05);padding:4px;border-radius:11px;margin-bottom:22px}
+.login-tab{flex:1;padding:8px;border:none;background:transparent;color:#475569;border-radius:8px;cursor:pointer;font-family:inherit;font-size:.82rem;font-weight:600;transition:all .2s}
+.login-tab.active{background:rgba(30,64,175,.45);color:#fff}
+
+/* FILTER BAR */
+.filter-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.filter-btn{padding:6px 13px;border-radius:18px;border:1.5px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;font-family:inherit;font-size:.78rem;font-weight:600;transition:all .2s}
+.filter-btn.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+
+/* TABS */
+.tab-bar{display:flex;gap:3px;background:var(--surface2);padding:4px;border-radius:11px;margin-bottom:18px;overflow-x:auto}
+.tab-btn{flex-shrink:0;padding:7px 14px;border:none;background:transparent;color:var(--text2);border-radius:7px;cursor:pointer;font-family:inherit;font-size:.8rem;font-weight:600;transition:all .2s}
+.tab-btn.active{background:var(--surface);color:var(--text);box-shadow:var(--shadow)}
+
+/* EMPTY STATE */
+.empty-state{text-align:center;padding:44px 24px}
+.empty-icon{font-size:2.8rem;color:var(--text3);margin-bottom:10px}
+.empty-title{font-size:.95rem;font-weight:700;color:var(--text2)}
+.empty-sub{font-size:.82rem;color:var(--text3);margin-top:5px}
+
+/* INVOICE BUILDER */
+.inv-builder{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start}
+@media(max-width:900px){.inv-builder{grid-template-columns:1fr}}
+.item-row{display:flex;gap:7px;margin-bottom:9px;align-items:center}
+.item-row .desc-inp{flex:3;min-width:0}
+.item-row .num-inp{flex:1;min-width:0}
+.item-row .rm-btn{width:30px;height:30px;border:none;background:var(--danger-light);color:var(--danger);border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.8rem}
+.add-item-btn{width:100%;padding:9px;border:2px dashed var(--border);background:transparent;border-radius:9px;color:var(--text3);cursor:pointer;font-family:inherit;font-size:.82rem;transition:all .2s;margin-top:9px}
+.add-item-btn:hover{border-color:var(--primary);color:var(--primary)}
+
+/* IMAGE UPLOAD */
+.img-upload-area{border:2px dashed var(--border);border-radius:12px;padding:20px;text-align:center;cursor:pointer;transition:all .2s;background:var(--surface2)}
+.img-upload-area:hover{border-color:var(--primary);background:var(--primary-light)}
+.img-upload-area.has-img{padding:8px;border-style:solid;border-color:var(--success)}
+.img-preview{max-width:100%;max-height:180px;object-fit:contain;border-radius:8px;display:block;margin:0 auto}
+.img-thumb{width:60px;height:60px;object-fit:cover;border-radius:8px;cursor:pointer;border:2px solid var(--border)}
+
+/* STATUS TOGGLE */
+.status-toggle{display:flex;gap:8px;margin-bottom:13px}
+.status-opt{flex:1;padding:9px;border-radius:10px;border:2px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer;font-family:inherit;font-size:.82rem;font-weight:700;text-align:center;transition:all .2s}
+.status-opt.sel-debt{border-color:var(--danger);background:var(--danger-light);color:var(--danger)}
+.status-opt.sel-paid{border-color:var(--success);background:var(--success-light);color:var(--success)}
+
+/* ROLE BADGE */
+.role-admin{background:rgba(30,64,175,.15);color:#3b82f6;padding:3px 10px;border-radius:20px;font-size:.7rem;font-weight:700}
+.role-manager{background:rgba(124,58,237,.15);color:#7c3aed;padding:3px 10px;border-radius:20px;font-size:.7rem;font-weight:700}
+
+/* MOBILE */
+@media(max-width:768px){
+  #app{grid-template-columns:1fr}
+  #sidebar{position:fixed;top:0;right:-280px;width:280px;height:100vh;z-index:300;grid-row:unset;transition:right .3s cubic-bezier(.4,0,.2,1)}
+  #sidebar.open{right:0;box-shadow:-4px 0 30px rgba(0,0,0,.5)}
+  #sidebar-ov{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:299;display:none;backdrop-filter:blur(2px)}
+  #sidebar-ov.show{display:block}
+  #menuToggle{display:flex!important}
+  #main{padding:14px;padding-bottom:76px}
+  .stat-grid{grid-template-columns:1fr 1fr}
+  #bottomNav{position:fixed;bottom:0;left:0;right:0;background:var(--nav-bg);display:flex;z-index:200;padding-bottom:env(safe-area-inset-bottom);border-top:1px solid rgba(255,255,255,.07);box-shadow:0 -4px 20px rgba(0,0,0,.35)}
+  .bn-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 4px 5px;cursor:pointer;color:#334155;transition:color .2s;text-decoration:none;font-size:.58rem;font-weight:600;gap:3px}
+  .bn-item i{font-size:1.1rem}
+  .bn-item.active{color:#60a5fa}
+}
+@media(min-width:769px){#bottomNav{display:none}}
+@media print{#topbar,#sidebar,#bottomNav,.no-print,.btn,#offlineBanner,#loadingOverlay{display:none!important}#main{padding:0}body{background:#fff}.algerian-invoice{border-radius:0;box-shadow:none}}
+
+/* MISC */
+.text-success{color:var(--success)!important}
+.text-danger{color:var(--danger)!important}
+.text-warning{color:var(--warning)!important}
+.text-muted{color:var(--text3)!important}
+.fw-bold{font-weight:700!important}
+.fw-900{font-weight:900!important}
+.d-flex{display:flex}
+.align-center{align-items:center}
+.justify-between{justify-content:space-between}
+.gap-2{gap:8px}
+.gap-3{gap:12px}
+.mb-2{margin-bottom:8px}
+.mb-3{margin-bottom:12px}
+.mb-4{margin-bottom:16px}
+.mt-2{margin-top:8px}
+.mt-3{margin-top:12px}
+.mt-4{margin-top:16px}
+.w-100{width:100%}
+.divider{border:none;border-top:1px solid var(--border);margin:16px 0}
+.section-title{font-size:.72rem;text-transform:uppercase;letter-spacing:.09em;color:var(--text3);font-weight:700;margin-bottom:10px}
+</style>
+</head>
+<body>
+
+<!-- SPLASH -->
+<div id="splash">
+  <div class="splash-logo">⚙️</div>
+  <div class="splash-name">Sofazi</div>
+  <div class="splash-ver">v3.0 Professional</div>
+  <div class="splash-bar"><div class="splash-prog"></div></div>
+</div>
+
+<!-- OFFLINE -->
+<div id="offlineBanner"><i class="fas fa-wifi-slash"></i> وضع عدم الاتصال — البيانات المحلية متاحة</div>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">⚙️</div>
+    <div class="login-title">Sofazi</div>
+    <div class="login-sub">النظام المركزي للإدارة v3 Pro</div>
+    <div class="login-tabs">
+      <button class="login-tab active" id="tabLogin" onclick="switchAuthTab('login')">دخول</button>
+      <button class="login-tab" id="tabReg" onclick="switchAuthTab('register')">حساب جديد</button>
+    </div>
+    <div id="loginForm">
+      <input type="email" id="li_email" class="login-input" placeholder="البريد الإلكتروني">
+      <input type="password" id="li_pass" class="login-input" placeholder="كلمة المرور" onkeypress="if(event.key==='Enter')doLogin()">
+      <button class="login-btn" onclick="doLogin()"><i class="fas fa-sign-in-alt"></i> دخول</button>
+    </div>
+    <div id="registerForm" style="display:none">
+      <input type="text" id="re_name" class="login-input" placeholder="الاسم الكامل">
+      <input type="email" id="re_email" class="login-input" placeholder="البريد الإلكتروني">
+      <input type="password" id="re_pass" class="login-input" placeholder="كلمة المرور (6+ أحرف)">
+      <button class="login-btn" onclick="doRegister()"><i class="fas fa-user-plus"></i> إنشاء حساب</button>
+    </div>
+  </div>
+</div>
+
+<!-- SIDEBAR OVERLAY -->
+<div id="sidebar-ov" onclick="closeSidebar()"></div>
+
+<!-- APP -->
+<div id="app">
+  <header id="topbar">
+    <div class="topbar-left">
+      <button class="icon-btn" id="menuToggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+      <div class="d-flex align-center gap-2">
+        <div class="brand-icon">S</div>
+        <div>
+          <div class="brand-name" id="companyNameTop">Sofazi</div>
+          <div class="brand-ver">v3.0 Pro</div>
+        </div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <button class="icon-btn" id="darkToggle" onclick="toggleDark()" title="الوضع الليلي"><i class="fas fa-moon"></i></button>
+    </div>
+  </header>
+
+  <nav id="sidebar">
+    <div class="sidebar-user">
+      <div class="user-av" id="userAv" style="background:linear-gradient(135deg,#1e40af,#0ea5e9)">U</div>
+      <div>
+        <div class="user-nm" id="userNm">—</div>
+        <div class="user-rl" id="userRl">—</div>
+      </div>
+    </div>
+    <div class="sidebar-sec">
+      <div class="sidebar-lbl">الرئيسية</div>
+      <a class="nav-item" data-page="dashboard" onclick="loadPage('dashboard')"><i class="fas fa-home"></i> لوحة التحكم</a>
+    </div>
+    <div class="sidebar-sec">
+      <div class="sidebar-lbl">المبيعات</div>
+      <a class="nav-item" data-page="customers" onclick="loadPage('customers')"><i class="fas fa-users"></i> الزبائن</a>
+      <a class="nav-item" data-page="invoices" onclick="loadPage('invoices')"><i class="fas fa-file-invoice"></i> فاتورة جديدة</a>
+      <a class="nav-item" data-page="invoicesList" onclick="loadPage('invoicesList')"><i class="fas fa-list-alt"></i> قائمة الفواتير</a>
+    </div>
+    <div class="sidebar-sec">
+      <div class="sidebar-lbl">الورشة</div>
+      <a class="nav-item" data-page="workshopDebts" onclick="loadPage('workshopDebts')"><i class="fas fa-building"></i> ديون الورشة</a>
+      <a class="nav-item" data-page="workers" onclick="loadPage('workers')"><i class="fas fa-hard-hat"></i> العمال والمسيرون</a>
+      <a class="nav-item" data-page="expenses" onclick="loadPage('expenses')"><i class="fas fa-money-bill-wave"></i> المصاريف</a>
+    </div>
+    <div class="sidebar-sec">
+      <div class="sidebar-lbl">النظام</div>
+      <a class="nav-item" data-page="users" onclick="loadPage('users')"><i class="fas fa-users-cog"></i> المستخدمون</a>
+      <a class="nav-item" data-page="sync" onclick="loadPage('sync')"><i class="fas fa-sync-alt"></i> المزامنة</a>
+      <a class="nav-item" data-page="settings" onclick="loadPage('settings')"><i class="fas fa-cog"></i> الإعدادات</a>
+    </div>
+    <div class="sidebar-footer">
+      <button class="btn-logout" onclick="logout()"><i class="fas fa-sign-out-alt"></i> تسجيل الخروج</button>
+    </div>
+  </nav>
+
+  <main id="main"></main>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav id="bottomNav">
+  <a class="bn-item" data-page="dashboard" onclick="loadPage('dashboard')"><i class="fas fa-home"></i><span>الرئيسية</span></a>
+  <a class="bn-item" data-page="customers" onclick="loadPage('customers')"><i class="fas fa-users"></i><span>الزبائن</span></a>
+  <a class="bn-item" data-page="invoices" onclick="loadPage('invoices')"><i class="fas fa-file-invoice"></i><span>فاتورة</span></a>
+  <a class="bn-item" data-page="workers" onclick="loadPage('workers')"><i class="fas fa-hard-hat"></i><span>العمال</span></a>
+  <a class="bn-item" data-page="expenses" onclick="loadPage('expenses')"><i class="fas fa-money-bill-wave"></i><span>مصاريف</span></a>
+</nav>
+
+<!-- LOADING -->
+<div id="loadingOverlay"><div class="loader"></div></div>
+<div id="toastContainer"></div>
+
+<script>
+'use strict';
+// ==================== SERVICE WORKER ====================
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').then(reg => {
+    reg.addEventListener('updatefound', () => {
+      const w = reg.installing;
+      w.addEventListener('statechange', () => {
+        if (w.state === 'installed' && navigator.serviceWorker.controller) {
+          showToast('تحديث متوفر — أعد تحميل الصفحة','info');
+        }
+      });
+    });
+  }).catch(() => {});
+}
+
+// ==================== GLOBALS ====================
+let db, auth, storage, firebaseInitialized = false, currentUser = null, invoiceItems = [];
+let deferredInstall = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall = e; });
+
+// ==================== UTILS ====================
+const toCents = v => Math.round((+v||0) * 100);
+const fromCents = v => (v||0) / 100;
+function fmtCur(v) { return new Intl.NumberFormat('fr-DZ',{style:'currency',currency:'DZD',maximumFractionDigits:0}).format(fromCents(v||0)); }
+function escH(s) { if(!s)return''; return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function uuid() { return crypto.randomUUID?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>(c==='x'?(Math.random()*16|0):((Math.random()*16|0)&3|8)).toString(16)); }
+function today() { return new Date().toISOString().slice(0,10); }
+function avatarColor(name) { const colors=['#1e40af','#7c3aed','#059669','#dc2626','#d97706','#0284c7','#be185d']; let h=0; for(let i=0;i<(name||'').length;i++)h+=name.charCodeAt(i); return colors[h%colors.length]; }
+function formatDate(d) { if(!d)return'—'; return new Date(d).toLocaleDateString('ar-DZ',{year:'numeric',month:'short',day:'numeric'}); }
+
+// ==================== TOAST ====================
+function showToast(msg, type='info') {
+  const icons={success:'fa-check',error:'fa-times',info:'fa-info'};
+  const el=document.createElement('div');
+  el.className=`toast ${type}`;
+  el.innerHTML=`<span class="toast-ic"><i class="fas ${icons[type]||icons.info}"></i></span>${escH(msg)}`;
+  document.getElementById('toastContainer').appendChild(el);
+  setTimeout(()=>{el.classList.add('out');setTimeout(()=>el.remove(),280);},3800);
+}
+
+// ==================== LOADING ====================
+let lc=0;
+function showLoading(){lc++;document.getElementById('loadingOverlay').style.display='flex';}
+function hideLoading(){if(--lc<=0){lc=0;document.getElementById('loadingOverlay').style.display='none';}}
+
+// ==================== DARK MODE ====================
+function toggleDark(){
+  document.body.classList.toggle('dark');
+  const d=document.body.classList.contains('dark');
+  localStorage.setItem('darkMode',d);
+  document.getElementById('darkToggle').innerHTML=d?'<i class="fas fa-sun"></i>':'<i class="fas fa-moon"></i>';
+}
+if(localStorage.getItem('darkMode')==='true'){
+  document.body.classList.add('dark');
+  document.addEventListener('DOMContentLoaded',()=>{const b=document.getElementById('darkToggle');if(b)b.innerHTML='<i class="fas fa-sun"></i>';});
+}
+
+// ==================== SIDEBAR ====================
+function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('sidebar-ov').classList.toggle('show');}
+function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('sidebar-ov').classList.remove('show');}
+
+// ==================== OFFLINE ====================
+window.addEventListener('online',()=>document.getElementById('offlineBanner').classList.remove('show'));
+window.addEventListener('offline',()=>document.getElementById('offlineBanner').classList.add('show'));
+if(!navigator.onLine)document.getElementById('offlineBanner').classList.add('show');
+
+// ==================== FIREBASE ====================
+function setupFirebase(){
+  let cfg=localStorage.getItem('sofaziFirebaseConfig');
+  if(!cfg){
+    cfg=JSON.stringify({apiKey:"AIzaSyCsbMKBCYUACO-8-fbJv4SPLClrL-tFoGo",authDomain:"sofazi.firebaseapp.com",projectId:"sofazi",storageBucket:"sofazi.firebasestorage.app",messagingSenderId:"481028905576",appId:"1:481028905576:web:174a0da0566dea134779dd"});
+    localStorage.setItem('sofaziFirebaseConfig',cfg);
+  }
+  try{
+    firebase.initializeApp(JSON.parse(cfg));
+    db=firebase.firestore();auth=firebase.auth();
+    if(firebase.storage)storage=firebase.storage();
+    try{db.enablePersistence({synchronizeTabs:true}).catch(()=>{});}catch(e){}
+    firebaseInitialized=true;
+    restoreSession();
+  }catch(e){console.error(e);showToast('خطأ في الاتصال بقاعدة البيانات','error');setTimeout(()=>document.getElementById('splash').classList.add('hidden'),500);}
+}
+
+// ==================== FIRESTORE ====================
+async function getCol(col){
+  if(!firebaseInitialized||!currentUser)return[];
+  try{
+    const snap=await db.collection(col).where('userId','in',[currentUser.uid,'shared']).get();
+    return snap.docs.map(d=>({id:d.id,...d.data()}));
+  }catch(e){console.warn(col,e);return[];}
+}
+async function saveCol(col,arr){
+  if(!firebaseInitialized||!currentUser)return;
+  const batch=db.batch();
+  const existing=await db.collection(col).where('userId','==',currentUser.uid).get();
+  existing.forEach(d=>batch.delete(d.ref));
+  arr.forEach(item=>{
+    const ref=db.collection(col).doc(item.id||uuid());
+    batch.set(ref,{...item,userId:currentUser.uid,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+  });
+  await batch.commit();
+}
+async function setDoc(col,id,data){
+  if(!firebaseInitialized||!currentUser)return;
+  await db.collection(col).doc(id).set({...data,userId:currentUser.uid,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+}
+async function delDoc(col,id){
+  if(!firebaseInitialized||!currentUser)return;
+  await db.collection(col).doc(id).delete();
+}
+
+// ==================== IMAGE UPLOAD (Base64 in Firestore) ====================
+async function fileToBase64(file){
+  return new Promise((res,rej)=>{
+    if(!file)return res(null);
+    if(file.size>2*1024*1024){rej(new Error('حجم الصورة يجب أن يكون أقل من 2 ميغابايت'));return;}
+    const r=new FileReader();
+    r.onload=()=>res(r.result);
+    r.onerror=()=>rej(new Error('فشل قراءة الملف'));
+    r.readAsDataURL(file);
+  });
+}
+
+// ==================== AUTH ====================
+function switchAuthTab(tab){
+  document.getElementById('loginForm').style.display=tab==='login'?'block':'none';
+  document.getElementById('registerForm').style.display=tab==='register'?'block':'none';
+  document.getElementById('tabLogin').classList.toggle('active',tab==='login');
+  document.getElementById('tabReg').classList.toggle('active',tab==='register');
+}
+async function doLogin(){
+  const email=document.getElementById('li_email').value.trim();
+  const pass=document.getElementById('li_pass').value;
+  if(!email||!pass){showToast('أدخل البريد وكلمة المرور','error');return;}
+  showLoading();
+  try{const cred=await auth.signInWithEmailAndPassword(email,pass);await onSignedIn(cred.user);}
+  catch(e){showToast(e.message,'error');}finally{hideLoading();}
+}
+async function doRegister(){
+  const name=document.getElementById('re_name').value.trim();
+  const email=document.getElementById('re_email').value.trim();
+  const pass=document.getElementById('re_pass').value;
+  if(!name||!email||!pass){showToast('جميع الحقول مطلوبة','error');return;}
+  if(pass.length<6){showToast('كلمة المرور 6 أحرف على الأقل','error');return;}
+  showLoading();
+  try{
+    const cred=await auth.createUserWithEmailAndPassword(email,pass);
+    await db.collection('users').doc(cred.user.uid).set({id:cred.user.uid,email,full_name:name,role:'admin',is_active:true,created_at:new Date().toISOString(),userId:cred.user.uid});
+    await onSignedIn(cred.user);
+  }catch(e){showToast(e.message,'error');}finally{hideLoading();}
+}
+async function onSignedIn(user){
+  currentUser=user;
+  const doc=await db.collection('users').doc(user.uid).get();
+  const fullName=doc.exists?(doc.data().full_name||user.email.split('@')[0]):user.email.split('@')[0];
+  currentUser.role=doc.exists?(doc.data().role||'admin'):'admin';
+  currentUser.fullName=fullName;
+  if(!doc.exists)await db.collection('users').doc(user.uid).set({id:user.uid,email:user.email,full_name:fullName,role:'admin',is_active:true,created_at:new Date().toISOString(),userId:user.uid});
+  document.getElementById('userNm').textContent=fullName;
+  document.getElementById('userRl').textContent=currentUser.role==='admin'?'مدير النظام':currentUser.role==='manager'?'مسيّر':'موظف';
+  document.getElementById('userAv').textContent=fullName.charAt(0).toUpperCase();
+  document.getElementById('userAv').style.background=`linear-gradient(135deg,${avatarColor(fullName)},${avatarColor(fullName+'x')})`;
+  document.getElementById('loginScreen').classList.remove('visible');
+  await initDefaultData();
+  await updateTopBarName();
+  const urlPage=new URLSearchParams(location.search).get('page');
+  loadPage(urlPage||'dashboard');
+  showToast(`مرحباً ${fullName} 👋`,'success');
+}
+async function logout(){
+  if(!confirm('تأكيد تسجيل الخروج؟'))return;
+  await auth.signOut();currentUser=null;
+  document.getElementById('loginScreen').classList.add('visible');
+  document.getElementById('main').innerHTML='';
+  closeSidebar();
+}
+function restoreSession(){
+  auth.onAuthStateChanged(async user=>{
+    if(user){await onSignedIn(user);}
+    else{document.getElementById('loginScreen').classList.add('visible');}
+    setTimeout(()=>document.getElementById('splash').classList.add('hidden'),400);
+  });
+}
+async function updateTopBarName(){
+  const s=await getCol('settings');
+  if(s.length&&s[0].companyNameAr)document.getElementById('companyNameTop').textContent=s[0].companyNameAr;
+}
+async function initDefaultData(){
+  const sSnap=await db.collection('settings').where('userId','==',currentUser.uid).get();
+  if(sSnap.empty)await db.collection('settings').add({id:'s1',darkMode:false,invoiceCounter:1,companyNameAr:'Sofazi',companyNameFr:'SOFAZI',legalForm:'SARL',capital:'100,000 DA',companyNif:'123456789012345',companyNis:'123456789012345',companyRc:'21 B 1234567',companyArt:'123456789012345',companyPhone:'0550 12 34 56',companyEmail:'contact@sofazi.dz',companyAddr:'Alger, Algérie',userId:currentUser.uid});
+  const cSnap=await db.collection('expense_categories').where('userId','==',currentUser.uid).get();
+  if(cSnap.empty){const cats=[{name:'إيجار',color:'#dc2626'},{name:'كهرباء',color:'#f59e0b'},{name:'رواتب',color:'#10b981'},{name:'أدوات',color:'#3b82f6'},{name:'ديون ورشة',color:'#8b5cf6'},{name:'وقود',color:'#f97316'},{name:'صيانة',color:'#06b6d4'}];const b=db.batch();cats.forEach(c=>{const r=db.collection('expense_categories').doc(uuid());b.set(r,{id:r.id,...c,userId:currentUser.uid});});await b.commit();}
+}
+
+// ==================== NAVIGATION ====================
+async function loadPage(page){
+  if(!currentUser){document.getElementById('loginScreen').classList.add('visible');return;}
+  closeSidebar();
+  document.querySelectorAll('[data-page]').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll(`[data-page="${page}"]`).forEach(el=>el.classList.add('active'));
+  document.getElementById('main').scrollTop=0;
+  history.replaceState(null,'',`?page=${page}`);
+  switch(page){
+    case'dashboard':await renderDashboard();break;
+    case'customers':await renderCustomers();break;
+    case'invoices':await renderInvoices();break;
+    case'invoicesList':await renderInvoicesList();break;
+    case'workshopDebts':await renderWorkshopDebts();break;
+    case'workers':await renderWorkers();break;
+    case'expenses':await renderExpenses();break;
+    case'users':await renderUsers();break;
+    case'sync':await renderSync();break;
+    case'settings':await renderSettings();break;
+    default:await renderDashboard();
+  }
+}
+
+// ==================== MODAL ====================
+function closeModal(id){const el=document.getElementById(id);if(el){el.style.opacity='0';el.style.transform='scale(.97)';setTimeout(()=>el.remove(),200);}}
+function buildModal(id,title,body,footer='',large=false){
+  document.getElementById(id)?.remove();
+  const el=document.createElement('div');
+  el.id=id;el.className='modal-overlay';
+  el.innerHTML=`<div class="modal-box${large?' modal-lg':''}"><div class="modal-header"><span class="modal-title">${title}</span><button class="modal-close" onclick="closeModal('${id}')"><i class="fas fa-times"></i></button></div><div class="modal-body">${body}</div>${footer?`<div class="modal-footer">${footer}</div>`:''}</div>`;
+  el.addEventListener('click',e=>{if(e.target===el)closeModal(id);});
+  document.body.appendChild(el);
+}
+
+// ==================== DASHBOARD ====================
+async function renderDashboard(){
+  showLoading();
+  try{
+    let[customers,invoices,expenses,wdebts,workers]=await Promise.all([getCol('customers'),getCol('invoices'),getCol('expenses'),getCol('workshop_debts'),getCol('workers')]);
+    if(currentUser.role!=='admin'){customers=customers.filter(c=>c.created_by===currentUser.uid);invoices=invoices.filter(i=>i.created_by===currentUser.uid);expenses=expenses.filter(e=>e.created_by===currentUser.uid);}
+    const totalRev=invoices.reduce((s,i)=>s+(i.paid_amount||0),0);
+    const totalDebt=invoices.reduce((s,i)=>s+(i.remaining_amount||0),0);
+    const totalExp=expenses.reduce((s,e)=>s+(e.amount||0),0);
+    const profit=totalRev-totalExp;
+    const pendingDebts=wdebts.filter(d=>d.remaining_amount>0).sort((a,b)=>b.remaining_amount-a.remaining_amount).slice(0,5);
+    const recent=invoices.sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0)).slice(0,6);
+    const unpaidCount=invoices.filter(i=>i.status!=='paid').length;
+    const pendingDebtTotal=wdebts.filter(d=>d.remaining_amount>0).reduce((s,d)=>s+d.remaining_amount,0);
+
+    document.getElementById('main').innerHTML=`
+    <div class="page-header">
+      <div class="page-title">لوحة التحكم<small>مرحباً، ${escH(currentUser.fullName)} — ${formatDate(today())}</small></div>
+      <button class="btn btn-primary btn-sm" onclick="loadPage('invoices')"><i class="fas fa-plus"></i> فاتورة جديدة</button>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-card blue" onclick="loadPage('customers')">
+        <div class="stat-icon"><i class="fas fa-users"></i></div>
+        <div class="stat-val">${customers.length}</div>
+        <div class="stat-label">إجمالي الزبائن</div>
+      </div>
+      <div class="stat-card green" onclick="loadPage('invoicesList')">
+        <div class="stat-icon"><i class="fas fa-chart-line"></i></div>
+        <div class="stat-val">${fmtCur(totalRev)}</div>
+        <div class="stat-label">الإيرادات المحصّلة</div>
+      </div>
+      <div class="stat-card red" onclick="loadPage('expenses')">
+        <div class="stat-icon"><i class="fas fa-money-bill-wave"></i></div>
+        <div class="stat-val">${fmtCur(totalExp)}</div>
+        <div class="stat-label">إجمالي المصاريف</div>
+      </div>
+      <div class="stat-card amber">
+        <div class="stat-icon"><i class="fas fa-coins"></i></div>
+        <div class="stat-val">${fmtCur(profit)}</div>
+        <div class="stat-label">صافي الربح</div>
+      </div>
+      <div class="stat-card purple" onclick="loadPage('workshopDebts')">
+        <div class="stat-icon"><i class="fas fa-building"></i></div>
+        <div class="stat-val">${fmtCur(pendingDebtTotal)}</div>
+        <div class="stat-label">ديون الورشة المتبقية</div>
+      </div>
+    </div>
+    ${totalDebt>0?`<div class="card mb-4">
+      <div class="card-header"><i class="fas fa-clock me-2" style="color:var(--warning)"></i>مديونية الزبائن</div>
+      <div class="card-body">
+        <div class="d-flex justify-between align-center mb-2">
+          <span class="text-muted" style="font-size:.82rem">المبالغ المتبقية للتحصيل</span>
+          <span class="text-danger fw-bold">${fmtCur(totalDebt)}</span>
+        </div>
+        <div class="progress-wrap"><div class="progress-fill" style="width:${totalRev+totalDebt>0?Math.min(100,totalRev/(totalRev+totalDebt)*100).toFixed(0):0}%"></div></div>
+        <div class="d-flex justify-between mt-2" style="font-size:.73rem;color:var(--text3)">
+          <span>محصّل: ${fmtCur(totalRev)}</span>
+          <span>${unpaidCount} فاتورة غير مسددة</span>
+          <span>متبقي: ${fmtCur(totalDebt)}</span>
+        </div>
+      </div>
+    </div>`:''}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="card">
+        <div class="card-header"><span><i class="fas fa-building me-2" style="color:var(--danger)"></i>ديون الورشة</span><span class="badge badge-danger">${pendingDebts.length}</span></div>
+        <div style="padding:0">
+          ${pendingDebts.length?pendingDebts.map(d=>`<div class="info-row" style="padding:10px 16px"><span class="info-label">${escH(d.name)}</span><span class="text-danger fw-bold">${fmtCur(d.remaining_amount)}</span></div>`).join(''):`<div class="empty-state" style="padding:20px"><div class="empty-icon">🎉</div><div class="empty-title">لا توجد ديون</div></div>`}
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span><i class="fas fa-file-invoice me-2" style="color:var(--primary)"></i>آخر الفواتير</span><span class="badge badge-warning">${unpaidCount} غير مدفوعة</span></div>
+        <div style="padding:0">
+          ${recent.length?recent.map(i=>{
+            const cust=customers.find(c=>c.id===i.customer_id);
+            return`<div class="info-row" style="padding:10px 16px;cursor:pointer" onclick="viewInvoice('${i.id}')">
+              <div><div style="font-weight:700;font-size:.83rem">${escH(i.invoice_number)}</div><div style="font-size:.72rem;color:var(--text3)">${escH(cust?.name||'—')}</div></div>
+              <div style="text-align:left"><div style="font-weight:700;font-size:.83rem">${fmtCur(i.total_amount)}</div><span class="badge ${i.status==='paid'?'badge-success':i.status==='partial'?'badge-warning':'badge-danger'}" style="font-size:.62rem">${i.status==='paid'?'مدفوعة':i.status==='partial'?'جزئي':'غير مدفوعة'}</span></div>
+            </div>`;}).join(''):`<div class="empty-state" style="padding:20px"><div class="empty-icon">📄</div><div class="empty-title">لا توجد فواتير</div></div>`}
+        </div>
+      </div>
+    </div>`;
+  }catch(e){showToast('فشل تحميل لوحة التحكم','error');}finally{hideLoading();}
+}
+
+// ==================== CUSTOMERS ====================
+const WILAYAS=['أدرار','الشلف','الأغواط','أم البواقي','باتنة','بجاية','بسكرة','بشار','البليدة','البويرة','تمنراست','تبسة','تلمسان','تيارت','تيزي وزو','الجزائر','الجلفة','جيجل','سطيف','سعيدة','سكيكدة','سيدي بلعباس','عنابة','قالمة','قسنطينة','المدية','ميلة','معسكر','مستغانم','المسيلة','النعامة','عين تموشنت','غرداية','غليزان'];
+
+async function renderCustomers(page=1,limit=12){
+  showLoading();
+  try{
+    let customers=await getCol('customers');
+    if(currentUser.role!=='admin')customers=customers.filter(c=>c.created_by===currentUser.uid);
+    customers.sort((a,b)=>(b.total_amount-b.paid_amount)-(a.total_amount-a.paid_amount));
+    const pages=Math.ceil(customers.length/limit);
+    const paged=customers.slice((page-1)*limit,page*limit);
+    document.getElementById('main').innerHTML=`
+    <div class="page-header">
+      <div class="page-title">الزبائن<small>${customers.length} زبون مسجل</small></div>
+      <button class="btn btn-primary" onclick="showCustomerModal()"><i class="fas fa-plus"></i> زبون جديد</button>
+    </div>
+    <div class="search-wrap"><span class="search-icon"><i class="fas fa-search"></i></span><input type="text" id="srch" class="form-control" style="padding-right:42px" placeholder="ابحث بالاسم أو الهاتف..." oninput="filterList(this.value,'custGrid','cust-card')"></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(275px,1fr));gap:13px" id="custGrid">
+      ${paged.map(c=>{
+        const rem=c.total_amount-c.paid_amount;
+        const pct=c.total_amount>0?Math.min(100,c.paid_amount/c.total_amount*100):0;
+        return`<div class="cust-card" data-search="${escH(c.name+' '+c.phone+' '+c.wilaya)}">
+          <div class="d-flex justify-between align-center mb-2">
+            <div style="font-weight:800;font-size:.95rem">${escH(c.name)}</div>
+            <span class="badge ${rem>0?'badge-danger':'badge-success'}">${rem>0?'له مديونية':'مسوّى'}</span>
+          </div>
+          <div style="font-size:.78rem;color:var(--text2);margin-bottom:10px"><i class="fas fa-phone" style="margin-left:4px;color:var(--text3)"></i>${escH(c.phone||'—')}${c.wilaya?` · <i class="fas fa-map-marker-alt" style="color:var(--text3)"></i> ${escH(c.wilaya)}`:''}</div>
+          <div class="cust-amounts">
+            <div class="amt-box"><div class="amt-val" style="color:var(--primary)">${fmtCur(c.total_amount)}</div><div class="amt-lbl">الإجمالي</div></div>
+            <div class="amt-box"><div class="amt-val" style="color:var(--success)">${fmtCur(c.paid_amount)}</div><div class="amt-lbl">المدفوع</div></div>
+            <div class="amt-box"><div class="amt-val ${rem>0?'text-danger':''}">${fmtCur(rem)}</div><div class="amt-lbl">المتبقي</div></div>
+          </div>
+          <div class="progress-wrap mb-3"><div class="progress-fill" style="width:${pct.toFixed(0)}%"></div></div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-primary" onclick="viewCustomer('${c.id}')"><i class="fas fa-eye"></i> عرض</button>
+            <button class="btn btn-sm btn-success" onclick="addPaymentModal('${c.id}')"><i class="fas fa-money-bill"></i> دفعة</button>
+            <button class="btn btn-sm btn-secondary" onclick="showCustomerModal('${c.id}')"><i class="fas fa-edit"></i></button>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+    ${customers.length===0?`<div class="empty-state"><div class="empty-icon">👤</div><div class="empty-title">لا يوجد زبائن</div><div class="empty-sub">اضغط "زبون جديد" للبدء</div></div>`:''}
+    <div class="pagination">${Array.from({length:pages},(_,i)=>`<button class="page-btn ${i+1===page?'active':''}" onclick="renderCustomers(${i+1})">${i+1}</button>`).join('')}</div>`;
+  }catch(e){showToast('فشل تحميل الزبائن','error');}finally{hideLoading();}
+}
+
+function filterList(term,gridId,cardClass){
+  const t=term.toLowerCase();
+  document.querySelectorAll(`#${gridId} .${cardClass}`).forEach(el=>{
+    el.style.display=el.dataset.search?.toLowerCase().includes(t)?'':'none';
+  });
+}
+
+function showCustomerModal(id=null){
+  buildModal('custModal',id?'تعديل زبون':'إضافة زبون',`
+    <div class="row-2">
+      <div class="form-group"><label class="form-label">الاسم الكامل *</label><input type="text" id="c_name" class="form-control" placeholder="محمد أمين بوعلي"></div>
+      <div class="form-group"><label class="form-label">الهاتف</label><input type="tel" id="c_phone" class="form-control" placeholder="0550 00 00 00"></div>
+      <div class="form-group"><label class="form-label">الولاية</label><select id="c_wilaya" class="form-control"><option value="">اختر الولاية</option>${WILAYAS.map(w=>`<option value="${w}">${w}</option>`).join('')}</select></div>
+      <div class="form-group"><label class="form-label">العنوان</label><input type="text" id="c_addr" class="form-control" placeholder="الحي، الشارع..."></div>
+      <div class="form-group"><label class="form-label">المبلغ الكلي (دج)</label><input type="number" id="c_total" class="form-control" placeholder="0" min="0" step="500" oninput="validatePayment()"></div>
+      <div class="form-group"><label class="form-label">المبلغ المدفوع (دج)</label><input type="number" id="c_paid" class="form-control" placeholder="0" min="0" step="500" oninput="validatePayment()"></div>
+      <div class="form-group"><label class="form-label">تاريخ آخر دفع</label><input type="date" id="c_paydate" class="form-control"></div>
+      <div class="form-group"><label class="form-label">تاريخ بداية العقد</label><input type="date" id="c_start" class="form-control"></div>
+    </div>
+    <div class="form-group"><label class="form-label">ملاحظات</label><textarea id="c_notes" class="form-control" rows="2"></textarea></div>
+    <div id="payValidation" style="display:none;background:var(--danger-light);color:var(--danger);padding:8px 12px;border-radius:8px;font-size:.8rem;margin-top:4px"><i class="fas fa-exclamation-triangle me-1"></i>المبلغ المدفوع لا يمكن أن يتجاوز الإجمالي</div>
+  `,`<button class="btn btn-secondary" onclick="closeModal('custModal')">إلغاء</button><button class="btn btn-primary" onclick="saveCustomer('${id||''}')"><i class="fas fa-save"></i> حفظ</button>`);
+  if(id){
+    getCol('customers').then(list=>{
+      const c=list.find(x=>x.id===id);if(!c)return;
+      document.getElementById('c_name').value=c.name||'';
+      document.getElementById('c_phone').value=c.phone||'';
+      document.getElementById('c_wilaya').value=c.wilaya||'';
+      document.getElementById('c_addr').value=c.address||'';
+      document.getElementById('c_total').value=fromCents(c.total_amount)||'';
+      document.getElementById('c_paid').value=fromCents(c.paid_amount)||'';
+      document.getElementById('c_paydate').value=c.payment_date||'';
+      document.getElementById('c_start').value=c.start_date||'';
+      document.getElementById('c_notes').value=c.notes||'';
+    });
+  }
+}
+function validatePayment(){
+  const t=parseFloat(document.getElementById('c_total').value)||0;
+  const p=parseFloat(document.getElementById('c_paid').value)||0;
+  document.getElementById('payValidation').style.display=p>t?'block':'none';
+}
+async function saveCustomer(id){
+  const name=document.getElementById('c_name').value.trim();
+  if(!name){showToast('الاسم مطلوب','error');return;}
+  const total=parseFloat(document.getElementById('c_total').value)||0;
+  const paid=parseFloat(document.getElementById('c_paid').value)||0;
+  if(paid>total){showToast('المدفوع لا يتجاوز الإجمالي','error');return;}
+  showLoading();
+  try{
+    const data={name,phone:document.getElementById('c_phone').value,wilaya:document.getElementById('c_wilaya').value,address:document.getElementById('c_addr').value,total_amount:toCents(total),paid_amount:toCents(paid),payment_date:document.getElementById('c_paydate').value,start_date:document.getElementById('c_start').value,notes:document.getElementById('c_notes').value,updated_at:new Date().toISOString()};
+    let list=await getCol('customers');
+    if(id){const i=list.findIndex(c=>c.id===id);if(i!==-1)list[i]={...list[i],...data};}
+    else list.push({id:uuid(),...data,created_by:currentUser.uid,created_by_name:currentUser.fullName,created_at:new Date().toISOString()});
+    await saveCol('customers',list);
+    closeModal('custModal');showToast(id?'تم تعديل الزبون':'✅ تم إضافة الزبون','success');renderCustomers();
+  }catch(e){showToast(e.message,'error');}finally{hideLoading();}
+}
+async function viewCustomer(id){
+  showLoading();
+  try{
+    const[list,invoices]=await Promise.all([getCol('customers'),getCol('invoices')]);
+    const c=list.find(x=>x.id===id);if(!c)throw new Error('الزبون غير موجود');
+    const custInvs=invoices.filter(i=>i.customer_id===id);
+    const rem=c.total_amount-c.paid_amount;
+    const pct=c.total_amount>0?Math.min(100,c.paid_amount/c.total_amount*100):0;
+    document.getElementById('main').innerHTML=`
+    <div class="page-header">
+      <div class="d-flex align-center gap-2">
+        <button class="btn btn-secondary btn-sm" onclick="renderCustomers()"><i class="fas fa-arrow-right"></i></button>
+        <div class="page-title">${escH(c.name)}</div>
+      </div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-success btn-sm" onclick="addPaymentModal('${c.id}')"><i class="fas fa-money-bill"></i> دفعة</button>
+        <button class="btn btn-secondary btn-sm" onclick="showCustomerModal('${c.id}')"><i class="fas fa-edit"></i> تعديل</button>
+      </div>
+    </div>
+    <div class="row-2 mb-4">
+      <div class="card">
+        <div class="card-header"><i class="fas fa-info-circle me-2" style="color:var(--primary)"></i>معلومات الزبون</div>
+        <div class="card-body">
+          <div class="info-row"><span class="info-label">الهاتف</span><span class="info-val">${escH(c.phone||'—')}</span></div>
+          <div class="info-row"><span class="info-label">الولاية</span><span class="info-val">${escH(c.wilaya||'—')}</span></div>
+          <div class="info-row"><span class="info-label">العنوان</span><span class="info-val">${escH(c.address||'—')}</span></div>
+          <div class="info-row"><span class="info-label">تاريخ البداية</span><span class="info-val">${escH(c.start_date||'—')}</span></div>
+          ${c.notes?`<div class="mt-3" style="font-size:.82rem;color:var(--text2);background:var(--surface2);padding:10px;border-radius:8px"><i class="fas fa-sticky-note me-1"></i>${escH(c.notes)}</div>`:''}
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><i class="fas fa-coins me-2" style="color:var(--warning)"></i>الملخص المالي</div>
+        <div class="card-body">
+          <div class="info-row"><span class="info-label">المبلغ الكلي</span><span class="info-val">${fmtCur(c.total_amount)}</span></div>
+          <div class="info-row"><span class="info-label">المدفوع</span><span class="info-val text-success">${fmtCur(c.paid_amount)}</span></div>
+          <div class="info-row"><span class="info-label">المتبقي</span><span class="info-val text-danger">${fmtCur(rem)}</span></div>
+          <div class="mt-3"><div class="progress-wrap"><div class="progress-fill" style="width:${pct.toFixed(0)}%"></div></div><div style="font-size:.72rem;color:var(--text3);margin-top:4px">${pct.toFixed(1)}% مسدّد</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><i class="fas fa-file-invoice me-2" style="color:var(--primary)"></i>الفواتير (${custInvs.length})</div>
+      ${custInvs.length?`<div class="table-wrap"><table><thead><tr><th>الرقم</th><th>التاريخ</th><th>الإجمالي</th><th>المدفوع</th><th>المتبقي</th><th>الحالة</th><th></th></tr></thead><tbody>
+        ${custInvs.map(inv=>`<tr><td><strong>${escH(inv.invoice_number)}</strong></td><td>${escH(inv.invoice_date)}</td><td>${fmtCur(inv.total_amount)}</td><td class="text-success">${fmtCur(inv.paid_amount)}</td><td class="text-danger">${fmtCur(inv.remaining_amount)}</td><td><span class="badge ${inv.status==='paid'?'badge-success':inv.status==='partial'?'badge-warning':'badge-danger'}">${inv.status==='paid'?'مدفوعة':inv.status==='partial'?'جزئي':'غير مدفوعة'}</span></td><td><button class="btn btn-xs btn-info" onclick="viewInvoice('${inv.id}')"><i class="fas fa-eye"></i></button></td></tr>`).join('')}
+      </tbody></table></div>`:`<div class="empty-state"><div class="empty-icon">📄</div><div class="empty-title">لا توجد فواتير</div></div>`}
+    </div>`;
+  }catch(e){showToast(e.message,'error');}finally{hideLoading();}
+}
+async function addPaymentModal(customerId){
+  let invoices=(await getCol('invoices')).filter(i=>i.customer_id===customerId&&i.remaining_amount>0);
+  if(currentUser.role!=='admin')invoices=invoices.filter(i=>i.created_by===currentUser.uid);
+  let unpaid=invoices[0];
+  if(!unpaid){
+    const list=await getCol('customers');const c=list.find(x=>x.id===customerId);if(!c)return;
+    const rem=c.total_amount-c.paid_amount;
+    if(rem<=0){showToast('لا يوجد مبلغ متبقي','error');return;}
+    const settings=await getCol('settings');const num=settings[0]?.invoiceCounter||1;
+    settings[0].invoiceCounter=num+1;await saveCol('settings',settings);
+    const newInv={id:uuid(),invoice_number:`INV-${new Date().getFullYear()}-${num}`,customer_id:customerId,invoice_date:today(),total_amount:rem,paid_amount:0,remaining_amount:rem,discount:0,tax_rate:0,status:'unpaid',notes:'فاتورة تلقائية',invoice_type:'officielle',created_by:currentUser.uid,created_at:new Date().toISOString(),updated_at:new Date().toISOString()};
+    let arr=await getCol('invoices');arr.push(newInv);await saveCol('invoices',arr);unpaid=newInv;
+  }
+  buildModal('pmtModal','تسجيل دفعة',`
+    <div class="info-row"><span class="info-label">الفاتورة</span><span class="fw-bold">${escH(unpaid.invoice_number)}</span></div>
+    <div class="info-row"><span class="info-label">المتبقي</span><span class="text-danger fw-bold">${fmtCur(unpaid.remaining_amount)}</span></div>
+    <div class="form-group mt-3"><label class="form-label">المبلغ (دج) *</label><input type="number" id="pm_amt" class="form-control" placeholder="0" max="${fromCents(unpaid.remaining_amount)}" step="500"></div>
+    <div class="form-group"><label class="form-label">تاريخ الدفع</label><input type="date" id="pm_date" class="form-control" value="${today()}"></div>
+    <div class="form-group"><label class="form-label">ملاحظات</label><textarea id="pm_notes" class="form-control" rows="2"></textarea></div>
+  `,`<button class="btn btn-secondary" onclick="closeModal('pmtModal')">إلغاء</button><button class="btn btn-success" onclick="savePayment('${customerId}','${unpaid.id}')"><i class="fas fa-check"></i> تأكيد</button>`);
+}
+async function savePayment(custId,invId){
+  const amt=parseFloat(document.getElementById('pm_amt').value);
+  if(isNaN(amt)||amt<=0){showToast('المبلغ غير صحيح','error');return;}
+  showLoading();
+  try{
+    let invoices=await getCol('invoices');const idx=invoices.findIndex(i=>i.id===invId);if(idx===-1)throw new Error('الفاتورة غير موجودة');
+    const amtC=toCents(amt);
+    if(amtC>invoices[idx].remaining_amount)throw new Error('المبلغ أكبر من المتبقي');
+    invoices[idx].paid_amount+=amtC;invoices[idx].remaining_amount=invoices[idx].total_amount-invoices[idx].paid_amount;
+    invoices[idx].status=invoices[idx].remaining_amount<=0?'paid':invoices[idx].paid_amount>0?'partial':'unpaid';invoices[idx].updated_at=new Date().toISOString();
+    await saveCol('invoices',invoices);
+    let pmts=await getCol('invoice_payments');pmts.push({id:uuid(),invoice_id:invId,amount:amtC,payment_date:document.getElementById('pm_date').value,notes:document.getElementById('pm_notes').value,received_by:currentUser.uid,received_by_name:currentUser.fullName});
+    await saveCol('invoice_payments',pmts);await updateCustTotals(custId);
+    closeModal('pmtModal');showToast('✅ تم تسجيل الدفعة','success');
+    if(document.querySelector('[data-page="customers"].active'))renderCustomers();
+  }catch(e){showToast(e.message,'error');}finally{hideLoading();}
+}
+async function updateCustTotals(custId){
+  const[invoices,customers]=await Promise.all([getCol('invoices'),getCol('customers')]);
+  const ci=invoices.filter(i=>i.customer_id===custId);
+  const idx=customers.findIndex(c=>c.id===custId);
+  if(idx!==-1){customers[idx].total_amount=ci.reduce((s,i)=>s+i.total_amount,0);customers[idx].paid_amount=ci.reduce((s,i)=>s+i.paid_amount,0);customers[idx].updated_at=new Date().toISOString();await saveCol('customers',customers);}
+}
+
+// ==================== INVOICES ====================
+async function renderInvoices(editId=null){
+  showLoading();invoiceItems=[];
+  try{
+    const[customers,settings]=await Promise.all([getCol('customers'),getCol('settings')]);
+    let editInv=null;
+    if(editId){const invs=await getCol('invoices');editInv=invs.find(i=>i.id===editId);const items=await getCol('invoice_items');invoiceItems=(items.filter(it=>it.invoice_id===editId)).map(it=>({name:it.description,quantity:it.quantity,price:fromCents(it.price)}));}
+    else invoiceItems=[{name:'',quantity:1,price:0}];
+    document.getElementById('main').innerHTML=`
+    <div class="page-header">
+      <div class="d-flex align-center gap-2"><button class="btn btn-secondary btn-sm" onclick="renderInvoicesList()"><i class="fas fa-arrow-right"></i></button><div class="page-title">${editId?'تعديل الفاتورة':'فاتورة جديدة'}</div></div>
+    </div>
+    <div class="inv-builder">
+      <div>
+        <div class="card mb-3">
+          <div class="card-header"><i class="fas fa-cog me-2"></i>معلومات الفاتورة</div>
+          <div class="card-body">
+            <div class="row-2">
+              <div class="form-group"><label class="form-label">الزبون *</label><select id="inv_cust" class="form-control" onchange="calcTotal()"><option value="">اختر...</option>${customers.map(c=>`<option value="${c.id}" ${editInv?.customer_id===c.id?'selected':''}>${escH(c.name)}</option>`).join('')}</select></div>
+              <div class="form-group"><label class="form-label">نوع الفاتورة</label><select id="inv_type" class="form-control"><option value="officielle" ${!editInv||editInv.invoice_type==='officielle'?'selected':''}>رسمية</option><option value="proforma" ${editInv?.invoice_type==='proforma'?'selected':''}>مؤقتة</option></select></div>
+              <div class="form-group"><label class="form-label">التاريخ</label><input type="date" id="inv_date" class="form-control" value="${editInv?.invoice_date||today()}"></div>
+              <div class="form-group"><label class="form-label">نسبة TVA (%)</label><input type="number" id="inv_tax" class="form-control" value="${editInv?fromCents(editInv.tax_rate):0}" min="0" max="100" step="1" oninput="calcTotal()"></div>
+              <div class="form-group" style="grid-column:1/-1"><label class="form-label">ملاحظات</label><textarea id="inv_notes" class="form-control" rows="2">${editInv?escH(editInv.notes):''}</textarea></div>
+            </div>
+          </div>
+        </div>
+        <div class="card mb-3">
+          <div class="card-header"><i class="fas fa-box me-2"></i>المنتجات / الخدمات</div>
+          <div class="card-body">
+            <div id="itemsCont">${invoiceItems.map((_,i)=>itemRowHtml(i)).join('')}</div>
+            <button class="add-item-btn" onclick="addItem()"><i class="fas fa-plus"></i> إضافة منتج</button>
+            <div class="mt-3" style="background:var(--surface2);padding:12px;border-radius:11px">
+              <div class="info-row"><span class="info-label">المجموع قبل TVA</span><span id="disp_sub" class="fw-bold">—</span></div>
+              <div class="info-row"><span class="info-label">TVA</span><span id="disp_tax" class="fw-bold">—</span></div>
+              <div class="info-row" style="border:none"><span style="font-weight:800">الإجمالي النهائي</span><span id="disp_total" class="fw-900" style="font-size:1.1rem;color:var(--primary)">—</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-primary" onclick="saveInvoice('${editId||''}')"><i class="fas fa-save"></i> ${editId?'تحديث':'حفظ الفاتورة'}</button>
+          <button class="btn btn-secondary" onclick="renderInvoicesList()">إلغاء</button>
+        </div>
+      </div>
+      <div class="card" id="prevCard">
+        <div class="card-header"><i class="fas fa-eye me-2"></i>المعاينة</div>
+        <div class="card-body" style="padding:10px"><div id="prevContent"><div style="text-align:center;padding:40px;color:var(--text3)"><i class="fas fa-file-invoice fa-3x mb-3"></i><p>ستظهر المعاينة هنا</p></div></div></div>
+      </div>
+    </div>`;
+    calcTotal();
+  }catch(e){showToast('فشل تحميل نموذج الفاتورة','error');}finally{hideLoading();}
+}
+function itemRowHtml(i){const it=invoiceItems[i]||{name:'',quantity:1,price:0};return`<div class="item-row" id="ir_${i}"><input type="text" class="form-control desc-inp" placeholder="وصف المنتج/الخدمة" value="${escH(it.name)}" oninput="updItem(${i},'name',this.value)"><input type="number" class="form-control num-inp" style="max-width:75px" placeholder="الكمية" value="${it.quantity}" min="1" oninput="updItem(${i},'quantity',+this.value)"><input type="number" class="form-control num-inp" style="max-width:105px" placeholder="السعر" value="${it.price}" min="0" step="100" oninput="updItem(${i},'price',+this.value)"><button class="rm-btn" onclick="rmItem(${i})"><i class="fas fa-trash"></i></button></div>`;}
+function addItem(){invoiceItems.push({name:'',quantity:1,price:0});const i=invoiceItems.length-1;document.getElementById('itemsCont').insertAdjacentHTML('beforeend',itemRowHtml(i));calcTotal();}
+function rmItem(i){if(invoiceItems.length<=1){showToast('منتج واحد على الأقل','error');return;}invoiceItems.splice(i,1);document.getElementById('itemsCont').innerHTML=invoiceItems.map((_,idx)=>itemRowHtml(idx)).join('');calcTotal();}
+function updItem(i,f,v){invoiceItems[i][f]=v;calcTotal();}
+async function calcTotal(){
+  const sub=invoiceItems.reduce((s,it)=>s+it.quantity*it.price,0);
+  const tax=(parseFloat(document.getElementById('inv_tax')?.value)||0);
+  const taxAmt=sub*tax/100;const tot=sub+taxAmt;
+  document.getElementById('disp_sub').textContent=fmtCur(toCents(sub));
+  document.getElementById('disp_tax').textContent=fmtCur(toCents(taxAmt));
+  document.getElementById('disp_total').textContent=fmtCur(toCents(tot));
+  await buildPreview(sub,taxAmt,tot);
+}
+async function buildPreview(sub,taxAmt,tot){
+  const pr=document.getElementById('prevContent');if(!pr)return;
+  const custId=document.getElementById('inv_cust')?.value;
+  const settings=await getCol('settings');const s=settings[0]||{};
+  const custs=custId?await getCol('customers'):[];const cust=custs.find(c=>c.id===custId);
+  pr.innerHTML=`<div class="algerian-invoice">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1e3a5f;padding-bottom:16px;margin-bottom:16px;flex-wrap:wrap;gap:12px">
+      <div><div class="inv-co-ar">${escH(s.companyNameAr||'Sofazi')}</div><div class="inv-co-fr">${escH(s.companyNameFr||'SOFAZI')} — ${escH(s.legalForm||'SARL')}</div><div class="inv-reg"><span>NIF: ${escH(s.companyNif||'—')}</span><span>NIS: ${escH(s.companyNis||'—')}</span><span>RC: ${escH(s.companyRc||'—')}</span></div></div>
+      <div style="text-align:left"><div style="font-size:1.2rem;font-weight:900;color:#1e3a5f">FACTURE</div><div style="font-size:.72rem;color:#64748b">${escH(document.getElementById('inv_date')?.value||today())}</div>${cust?`<div style="margin-top:8px;font-size:.75rem;color:#1e3a5f;background:#f8fafc;padding:8px;border-radius:8px"><strong>Destinataire:</strong><br>${escH(cust.name)}</div>`:''}</div>
+    </div>
+    <table class="inv-table"><thead><tr><th>#</th><th>البيان</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th></tr></thead><tbody>${invoiceItems.map((it,i)=>`<tr><td>${i+1}</td><td style="text-align:right">${escH(it.name)||'—'}</td><td>${it.quantity}</td><td>${fmtCur(toCents(it.price))}</td><td>${fmtCur(toCents(it.quantity*it.price))}</td></tr>`).join('')}</tbody></table>
+    <div style="margin-top:10px"><div class="inv-total-row"><span>الإجمالي قبل TVA</span><span>${fmtCur(toCents(sub))}</span></div>${taxAmt>0?`<div class="inv-total-row"><span>TVA (${document.getElementById('inv_tax')?.value||0}%)</span><span>${fmtCur(toCents(taxAmt))}</span></div>`:''}<div class="inv-total-row grand"><span>المجموع الإجمالي</span><span>${fmtCur(toCents(tot))}</span></div></div>
+    <div class="inv-sigs"><div class="sig-box">ختم المؤسسة<div class="sig-line"></div></div><div class="sig-box">توقيع الزبون<div class="sig-line"></div></div></div>
+  </div>`;}
+async function saveInvoice(editId){
+  const custId=document.getElementById('inv_cust').value;
+  if(!custId){showToast('اختر الزبون','error');return;}
+  if(invoiceItems.every(it=>!it.name.trim())){showToast('أضف منتجاً واحداً على الأقل','error');return;}
+  showLoading();
+  try{
+    const sub=invoiceItems.reduce((s,it)=>s+it.quantity*it.price,0);
+    const taxPct=parseFloat(document.getElementById('inv_tax').value)||0;
+    const total=sub*(1+taxPct/100);
+    const settings=await getCol('settings');let num=settings[0]?.invoiceCounter||1;
+    let invNum=editId?(await getCol('invoices')).find(i=>i.id===editId)?.invoice_number:`INV-${new Date().getFullYear()}-${num}`;
+    if(!editId){settings[0].invoiceCounter=num+1;await saveCol('settings',settings);}
+    const existingInv=editId?(await getCol('invoices')).find(i=>i.id===editId):null;
+    const invData={id:editId||uuid(),invoice_number:invNum,customer_id:custId,invoice_date:document.getElementById('inv_date').value,total_amount:toCents(total),paid_amount:existingInv?.paid_amount||0,remaining_amount:toCents(total)-(existingInv?.paid_amount||0),tax_rate:toCents(taxPct),discount:0,status:existingInv?.status||'unpaid',notes:document.getElementById('inv_notes').value,invoice_type:document.getElementById('inv_type').value,created_by:currentUser.uid,created_by_name:currentUser.fullName,created_at:existingInv?.created_at||new Date().toISOString(),updated_at:new Date().toISOString()};
+    let invs=await getCol('invoices');if(editId)invs=invs.filter(i=>i.id!==editId);invs.push(invData);await saveCol('invoices',invs);
+    let items=await getCol('invoice_items');items=items.filter(it=>it.invoice_id!==invData.id);
+    invoiceItems.filter(it=>it.name.trim()).forEach(it=>items.push({id:uuid(),invoice_id:invData.id,description:it.name,quantity:it.quantity,price:toCents(it.price),total:toCents(it.quantity*it.price)}));
+    await saveCol('invoice_items',items);await updateCustTotals(custId);
+    showToast(editId?'تم تعديل الفاتورة':'✅ تم حفظ الفاتورة','success');renderInvoicesList();
+  }catch(e){showToast(e.message,'error');}finally{hideLoading();}
+}
+async function renderInvoicesList(page=1,limit=15){
+  showLoading();
+  try{
+    let invoices=await getCol('invoices');
+    if(currentUser.role!=='admin')invoices=invoices.filter(i=>i.created_by===currentUser.uid);
+    invoices.sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
+    const customers=await getCol('customers');const pages=Math.ceil(invoices.length/limit);const paged=invoices.slice((page-1)*limit,page*limit);
+    document.getElementById('main').innerHTML=`
+    <div class="page-header">
+      <div class="page-title">قائمة الفواتير<small>${invoices.length} فاتورة</small></div>
+      <button class="btn btn-primary" onclick="renderInvoices()"><i class="fas fa-plus"></i> فاتورة جديدة</button>
+    </div>
+    <div class="filter-bar">
+      <button class="filter-btn active" onclick="filterInvStatus(this,'all')">الكل (${invoices.length})</button>
+      <button class="filter-btn" onclick="filterInvStatus(this,'unpaid')">غير مدفوعة (${invoices.filter(i=>i.status==='unpaid').length})</button>
+      <button class="filter-btn" onclick="filterInvStatus(this,'partial')">جزئية (${invoices.filter(i=>i.status==='partial').length})</button>
+      <button class="filter-btn" onclick="filterInvStatus(this,'paid')">مدفوعة (${invoices.filter(i=>i.status==='paid').length})</button>
+    </div>
+    <div class="table-wrap">
+      <table><thead><tr><th>رقم الفاتورة</th><th>الزبون</th><th>التاريخ</th><th>الإجمالي</th><th>المدفوع</th><th>المتبقي</th><th>الحالة</th><th></th></tr></thead>
+      <tbody id="invTbody">${paged.map(inv=>{const cust=customers.find(c=>c.id===inv.customer_id);return`<tr data-status="${inv.status}"><td><strong>${escH(inv.invoice_number)}</strong></td><td>${cust?escH(cust.name):'—'}</td><td style="white-space:nowrap">${escH(inv.invoice_date)}</td><td>${fmtCur(inv.total_amount)}</td><td class="text-success">${fmtCur(inv.paid_amount)}</td><td class="text-danger">${fmtCur(inv.remaining_amount)}</td><td><span class="badge ${inv.status==='paid'?'badge-success':inv.status==='partial'?'badge-warning':'badge-danger'}">${inv.status==='paid'?'مدفوعة':inv.status==='partial'?'جزئي':'غير مدفوعة'}</span></td><td><div style="display:flex;gap:5px"><button class="btn btn-xs btn-info" onclick="viewInvoice('${inv.id}')"><i class="fas fa-eye"></i></button><button class="btn btn-xs btn-secondary" onclick="renderInvoices('${inv.id}')"><i class="fas fa-edit"></i></button>${currentUser.role==='admin'?`<button class="btn btn-xs btn-danger" onclick="deleteInvoice('${inv.id}')"><i class="fas fa-trash"></i></button>`:''}</div></td></tr>`;}).join('')}</tbody></table>
+    </div>
+    ${invoices.length===0?`<div class="empty-state"><div class="empty-icon">📄</div><div class="empty-title">لا توجد فواتير</div></div>`:''}
+    <div class="pagination">${Array.from({length:pages},(_,i)=>`<button class="page-btn ${i+1===page?'active':''}" onclick="renderInvoicesList(${i+1})">${i+1}</button>`).join('')}</div>`;
+  }catch(e){showToast('فشل تحميل الفواتير','error');}finally{hideLoading();}
+}
+function filterInvStatus(btn,status){document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');document.querySelectorAll('#invTbody tr').forEach(r=>{r.style.display=status==='all'||r.dataset.status===status?'':'none';});}
+async function deleteInvoice(id){
+  if(currentUser.role!=='admin'){showToast('يتطلب صلاحيات المدير','error');return;}
+  if(!confirm('حذف هذه الفاتورة؟'))return;
+  showLoading();
+  try{
+    const inv=(await getCol('invoices')).find(i=>i.id===id);
+    let items=await getCol('invoice_items');items=items.filter(it=>it.invoice_id!==id);await saveCol('invoice_items',items);
+    let pmts=await getCol('invoice_payments');pmts=pmts.filter(p=>p.invoice_id!==id);await saveCol('invoice_payments',pmts);
+    let invs=await getCol('invoices');invs=invs.filter(i=>i.id!==id);await saveCol('invoices',invs);
+    if(inv)await updateCustTotals(inv.customer_id);
+    showToast('تم حذف الفاتورة','success');renderInvoicesList();
+  }catch(e){showToast(e.message,'error');}finally{hideLoading();}
+}
+async function viewInvoice(id){
+  showLoading();
+  try{
+    const[invs,custs,items,pmts,settings]=await Promise.all([getCol('invoices'),getCol('customers'),getCol('invoice_items'),getCol('invoice_payments'),getCol('settings')]);
+    const inv=invs.find(i=>i.id===id);if(!inv)throw new Error('الفاتورة غير موجودة');
+    const cust=custs.find(c=>c.id===inv.customer_id);const s=settings[0]||{};
+    const invItems=items.filter(it=>it.invoice_id===id);const invPmts=pmts.filter(p=>p.invoice_id===id);
+    document.getElementById('main').innerHTML=`
+    <div class="page-header no-print">
+      <div class="d-flex align-center gap-2"><button class="btn btn-secondary btn-sm" onclick="renderInvoicesList()"><i class="fas fa-arrow-right"></i></button><div class="page-title">${escH(inv.invoice_number)}</div></div>
+      <div class="d-flex gap-2">
+        ${inv.remaining_amount>0?`<button class="btn btn-success btn-sm" onclick="addPaymentModal('${cust?.id}')"><i class="fas fa-money-bill"></i> دفعة</button>`:''}
+        <button class="btn btn-primary btn-sm no-print" onclick="window.print()"><i class="fas fa-print"></i> طباعة</button>
+        <button class="btn btn-secondary btn-sm no-print" onclick="renderInvoices('${inv.id}')"><i class="fas fa-edit"></i></button>
+      </div>
+    </div>
+    <div class="algerian-invoice" id="printArea">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1e3a5f;padding-bottom:18px;margin-bottom:18px;flex-wrap:wrap;gap:14px">
+        <div><div class="inv-co-ar">${escH(s.companyNameAr||'Sofazi')}</div><div class="inv-co-fr">${escH(s.companyNameFr||'SOFAZI')} — ${escH(s.legalForm||'SARL')} — Capital: ${escH(s.capital||'—')}</div><div class="inv-reg"><span>NIF: ${escH(s.companyNif)}</span><span>NIS: ${escH(s.companyNis)}</span><span>RC: ${escH(s.companyRc)}</span><span>ART: ${escH(s.companyArt)}</span></div><div style="margin-top:7px;font-size:.72rem;color:#64748b"><i class="fas fa-phone" style="margin-left:4px"></i>${escH(s.companyPhone)} | ${escH(s.companyEmail)}<br>${escH(s.companyAddr)}</div></div>
+        <div style="text-align:left;min-width:150px"><div style="font-size:1.3rem;font-weight:900;color:#1e3a5f">FACTURE</div><div style="font-size:.72rem;color:#64748b">N° ${escH(inv.invoice_number)}</div><div style="font-size:.72rem;color:#64748b">Date: ${escH(inv.invoice_date)}</div>${cust?`<div style="margin-top:10px;font-size:.75rem;background:#f8fafc;padding:9px;border-radius:9px;color:#1e3a5f"><strong>DESTINATAIRE:</strong><br>${escH(cust.name)}<br>${cust.wilaya?escH(cust.wilaya)+'<br>':''}${escH(cust.phone||'')}</div>`:''}</div>
+      </div>
+      <table class="inv-table"><thead><tr><th>#</th><th>الوصف / البيان</th><th>الكمية</th><th>السعر الوحدوي</th><th>الإجمالي</th></tr></thead><tbody>${invItems.map((it,i)=>`<tr><td>${i+1}</td><td style="text-align:right">${escH(it.description||'—')}</td><td>${it.quantity}</td><td>${fmtCur(it.price)}</td><td>${fmtCur(it.total)}</td></tr>`).join('')}</tbody></table>
+      <div style="margin-top:12px"><div class="inv-total-row"><span>الإجمالي قبل TVA</span><span>${fmtCur(invItems.reduce((s,it)=>s+it.total,0))}</span></div>${fromCents(inv.tax_rate)>0?`<div class="inv-total-row"><span>TVA (${fromCents(inv.tax_rate)}%)</span><span>${fmtCur(inv.total_amount-invItems.reduce((s,it)=>s+it.total,0))}</span></div>`:''}<div class="inv-total-row grand"><span>المجموع الإجمالي</span><span>${fmtCur(inv.total_amount)}</span></div><div class="inv-total-row"><span class="text-success">المدفوع</span><span class="text-success">${fmtCur(inv.paid_amount)}</span></div><div class="inv-total-row grand"><span class="text-danger">المتبقي</span><span class="text-danger">${fmtCur(inv.remaining_amount)}</span></div></div>
+      ${inv.notes?`<div style="margin-top:12px;padding:10px;background:#f8fafc;border-radius:9px;font-size:.78rem;color:#64748b"><strong>ملاحظات:</strong> ${escH(inv.notes)}</div>`:''}
+      <div class="inv-sigs"><div class="sig-box">ختم وتوقيع المؤسسة<div class="sig-line"></div></div><div class="sig-box">توقيع الزبون<div class="sig-line"></div></div></div>
+    </div>
+    ${invPmts.length?`<div class="card mt-4 no-print"><div class="card-header"><i class="fas fa-history me-2"></i>سجل الدفعات (${invPmts.length})</div><div class="table-wrap"><table><thead><tr><th>التاريخ</th><th>المبلغ</th><th>ملاحظات</th><th>بواسطة</th></tr></thead><tbody>${invPmts.map(p=>`<tr><td>${escH(p.payment_date)}</td><td class="text-success fw-bold">${fmtCur(p.amount)}</td><td>${escH(p.notes||'—')}</td><td style="font-size:.78rem">${escH(p.received_by_name||'—')}</td></tr>`).join('')}</tbody></table></div></div>`:''}`; 
+  }catch(e){showToast(e.message,'error');}finally{hideLoading();}
+}
+
+// ==================== WORKSHOP DEBTS ====================
+async function renderWorkshopDebts(page=1,limit=15){
+  showLoading();
+  try{
+    let debts=await getCol('workshop_debts');
+    if(currentUser.role!=='admin')debts=debts.filter(d=>d.created_by===currentUser.uid);
+    const pages=Math.ceil(debts.length/limit);const paged=debts.slice((page-1)*limit,page*limit);
+    const totRem=debts.filter(d=>d.remaining_amount>0).reduce((s,d)=>s+d.remaining_amount,0);
+    document.getElementById('main').innerHTML=`
+    <div class="page-header">
+      <div class="page-title">ديون الورشة<small>${debts.filter(d=>d.remaining_amount>0).length} دين غير مسدد</small></div>
+      <button class="btn btn-primary" onclick="showDebtModal()"><i class="fas fa-plus"></i> دين جديد</button>
+    </div>
+    ${totRem>0?`<div class="card mb-4" style="background:linear-gradient(135deg,#7f1d1d,#dc2626);color:#fff;border:none"><div class="card-body d-flex justify-between align-center"><div><div style="font-size:.78rem;opacity:.8">إجمالي الديون غير المسددة</div><div style="font-size:1.5rem;font-weight:900">${fmtCur(totRem)}</div></div><i class="fas fa-exclamation-triangle fa-2x" style="opacity:.5"></i></div></div>`:''}
+    <div class="table-wrap"><table><thead><tr><th>البيان</th><th>الإجمالي</th><th>المدفوع</th><th>المتبقي</th><th>الاستحقاق</th><th>الحالة</th><th></th></tr></thead>
+    <tbody>${paged.map(d=>`<tr><td><strong>${escH(d.name)}</strong></td><td>${fmtCur(d.total_amount)}</td><td class="text-success">${fmtCur(d.paid_amount)}</td><td class="text-danger fw-bold">${fmtCur(d.remaining_amount)}</td><td style="white-space:nowrap">${escH(d.due_date||'—')}</td><td><span class="badge ${d.remaining_amount===0?'badge-success':'badge-danger'}">${d.remaining_amount===0?'مسدد':'غير مسدد'}</span></td><td><div style="display:flex;gap:5px">${d.remaining_amount>0?`<button class="btn btn-xs btn-success" onclick="payDebt('${d.id}')"><i class="fas fa-money-bill"></i> تسديد</button>`:''}${currentUser.role==='admin'?`<button class="btn btn-xs btn-danger" onclick="deleteDebt('${d.id}')"><i class="fas fa-trash"></i></button>`:''}</div></td></tr>`).join('')}</tbody></table></div>
+    ${debts.length===0?`<div class="empty-state"><div class="empty-icon">🏭</div><div class="empty-title">لا توجد ديون</div></div>`:''}
+    <div class="pagination">${Array.from({length:pages},(_,i)=>`<button class="page-btn ${i+1===page?'active':''}" onclick="renderWorkshopDebts(${i+1})">${i+1}</button>`).join('')}</div>`;
+  }catch(e){showToast('فشل تحميل ديون الورشة','error');}finally{hideLoading();}
+}
+function showDebtModal(){buildModal('debtModal','إضافة دين جديد',`<div class="form-group"><label class="form-label">البيان / المورّد *</label><input type="text" id="d_name" class="form-control" placeholder="اسم المورّد أو البيان"></div><div class="row-2"><div class="form-group"><label class="form-label">المبلغ الكلي (دج) *</label><input type="number" id="d_amt" class="form-control" placeholder="0" min="0" step="1000"></div><div class="form-group"><label class="form-label">تاريخ الاستحقاق</label><input type="date" id="d_due" class="form-control"></div></div>`,`<button class="btn btn-secondary" onclick="closeModal('debtModal')">إلغاء</button><button class="btn btn-primary" onclick="saveDebt()"><i class="fas fa-save"></i> حفظ</button>`);}
+async function saveDebt(){
+  const name=document.getElementById('d_name').value.trim();const amt=parseFloat(document.getElementById('d_amt').value);
+  if(!name||isNaN(amt)||amt<=0){showToast('البيان والمبلغ مطلوبان','error');return;}
+  showLoading();
+  try{let debts=await getCol('workshop_debts');debts.push({id:uuid(),name,total_amount:toCents(amt),paid_amount:0,remaining_amount:toCents(amt),due_date:document.getElementById('d_due').value,created_by:currentUser.uid,created_at:new Date().toISOString()});await saveCol('workshop_debts',debts);closeModal('debtModal');showToast('تم إضافة الدين','success');renderWorkshopDebts();}
+  catch(e){showToast(e.message,'error');}finally{hideLoading();}
+}
+function payDebt(id){buildModal('pdModal','تسديد دين',`<div class="form-group"><label class="form-label">المبلغ (دج) *</label><input type="number" id="pd_amt" class="form-control" placeholder="0" step="500"></div><div class="form-group"><label class="form-label">التاريخ</label><input type="date" id="pd_date" class="form-control" value="${today()}"></div>`,`<button class="btn btn-secondary" onclick="closeModal('pdModal')">إلغاء</button><button class="btn btn-success" onclick="saveDebtPay('${id}')"><i class="fas fa-check"></i> تأكيد</button>`);}
+async function saveDebtPay(id){
+  const amt=parseFloat(document.getElementById('pd_amt').value);if(isNaN(amt)||amt<=0){showToast('المبلغ غير صحيح','error');return;}
+  showLoading();
+  try{let debts=await getCol('workshop_debts');const i=debts.findIndex(d=>d.id===id);if(i===-1)throw new Error('الدين غير موجود');const c=toCents(amt);if(c>debts[i].remaining_amount)throw new Error('المبلغ أكبر من المتبقي');debts[i].paid_amount+=c;debts[i].remaining_amount=debts[i].total_amount-debts[i].paid_amount;await saveCol('workshop_debts',debts);closeModal('pdModal');showToast('✅ تم التسديد','success');renderWorkshopDebts();}
+  catch(e){showToast(e.message,'error');}finally{hideLoading();}
+}
+async function deleteDebt(id){
+  if(!confirm('حذف هذا الدين؟'))return;showLoading();
+  try{let debts=await getCol('workshop_debts');debts=debts.filter(d=>d.id!==id);await saveCol('workshop_debts',debts);showToast('تم الحذف','success');renderWorkshopDebts();}
+  catch(e){showToast(e.message,'error');}finally{hideLoading();}
+}
+
+// ==================== WORKERS (عمال + مسيرون) ====================
+async function renderWorkers(page=1,limit=12){
+  showLoading();
+  try{
+    let workers=await getCol('workers');
+    if(currentUser.role!=='admin')workers=workers.filter(w=>w.created_by===currentUser.uid);
+    const[advances,overtimes,absences]=await Promise.all([getCol('worker_advances'),getCol('worker_overtime'),getCol('worker_absences')]);
+    const pages=Math.ceil(workers.length/limit);const paged=workers.slice((page-1)*limit,page*limit);
+    document.getElementById('main').innerHTML=`
+    <div class="page-header">
+      <div class="page-title">العمال والمسيرون<small>${workers.filter(w=>w.worker_type==='worker').length} عامل · ${workers.filter(w=>w.worker_type==='manager').length} مسيّر</small></div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-secondary btn-sm" onclick="showArchiveModal()"><i class="fas fa-archive"></i> الأرشيف</button>
+        <button class="btn btn-purple btn-sm" onclick="showWorkerModal(null,'manager')"><i class="fas fa-user-tie"></i> مسيّر جديد</button>
+        <button class="btn btn-primary btn-sm" onclick="showWorkerModal(null,'worker')"><i class="fas fa-hard-hat"></i> عامل جديد</button>
+      </div>
+    </div>
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="filterWorkers(this,'all')">الكل (${workers.length})</button>
+      <button class="tab-btn" onclick="filterWorkers(this,'worker')">العمال (${workers.filter(w=>w.worker_type==='worker').length})</button>
+      <button class="tab-btn" onclick="filterWorkers(this,'manager')">المسيرون (${workers.filter(w=>w.worker_type==='manager').length})</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:13px" id="workersGrid">
+      ${paged.map(w=>{
+        const advSum=advances.filter(a=>a.worker_id===w.id).reduce((s,a)=>s+a.amount,0);
+        const ovSum=overtimes.filter(o=>o.worker_id===w.id).reduce((s,o)=>s+o.hours,0);
+        const absSum=absences.filter(a=>a.worker_id===w.id&&!a.is_paid).reduce((s,a)=>s+a.days,0);
+        const ovPay=toCents(ovSum*fromCents(w.hourly_rate||0));
+        const absDeduct=toCents(absSum*fromCents(w.monthly_salary)/30);
+        const totalSal=w.monthly_salary+ovPay-absDeduct;
+        const netPay=totalSal-advSum;
+        const isManager=w.worker_type==='manager';
+        return`<div class="worker-card" data-type="${isManager?'manager':'worker'}">
+          <div class="d-flex align-center gap-3 mb-3">
+            <div class="worker-av" style="background:${isManager?'linear-gradient(135deg,#4c1d95,#7c3aed)':'linear-gradient(135deg,#1e3a8a,#2563eb)'}">${w.name.charAt(0)}</div>
+            <div style="flex:1">
+              <div style="font-weight:800;font-size:.93rem">${escH(w.name)}</div>
+              <div style="font-size:.73rem;color:var(--text3)">${escH(w.phone||'—')}</div>
+              <span class="${isManager?'role-manager':'role-admin'}" style="margin-top:3px;display:inline-block">${isManager?'مسيّر':'عامل'}${w.job_title?' · '+escH(w.job_title):''}</span>
+            </div>
+            <span style="font-size:.8rem;font-weight:800;color:var(--primary)">${fmtCur(w.monthly_salary)}</span>
+          </div>
+          <div class="row-2 mb-3" style="gap:7px;font-size:.78rem">
+            <div style="background:var(--surface2);padding:7px 8px;border-radius:8px"><div style="color:var(--text3);font-size:.65rem">س. إضافية</div><div class="fw-bold">${ovSum}س (+${fmtCur(ovPay)})</div></div>
+            <div style="background:var(--surface2);padding:7px 8px;border-radius:8px"><div style="color:var(--text3);font-size:.65rem">الغياب</div><div class="fw-bold text-danger">${absSum}ي (-${fmtCur(absDeduct)})</div></div>
+            <div style="background:var(--success-light);padding:7px 8px;border-radius:8px"><div style="color:var(--text3);font-size:.65rem">إجمالي الراتب</div><div class="fw-bold text-success">${fmtCur(totalSal)}</div></div>
+            <div style="background:var(--warning-light);padding:7px 8px;border-radius:8px"><div style="color:var(--text3);font-size:.65rem">التسبيقات</div><div class="fw-bold text-warning">${fmtCur(advSum)}</div></div>
+          </div>
+          <div style="background:var(--danger-light);padding:9px;border-radius:9px;text-align:center;margin-bottom:11px">
+            <div style="font-size:.7rem;color:var(--danger)">الراتب المتبقي</div>
+            <div style="font-size:1.05rem;font-weight:900;color:var(--danger)">${fmtCur(netPay)}</div>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px">
+            <button class="btn btn-xs btn-info" onclick="showWorkerDetails('${w.id}')"><i class="fas fa-eye"></i></button>
+            <button class="btn btn-xs btn-secondary" onclick="showWorkerModal('${w.id}')"><i class="fas fa-edit"></i></button>
+            <button class="btn btn-xs btn-warning" onclick="workerActionModal('${w.id}','advance')"><i class="fas fa-hand-holding-usd"></i> تسبيق</button>
+            <button class="btn btn-xs btn-primary" onclick="workerActionModal('${w.id}','overtime')"><i class="fas fa-clock"></i> إضافي</button>
+            <button class="btn btn-xs btn-danger" onclick="workerActionModal('${w.id}','absence')"><i class="fas fa-calendar-times"></i> غياب</button>
+            <button class="btn btn-xs btn-success" onclick="genPayroll('${w.id}')"><i class="fas fa-file-invoice-dollar"></i> راتب</button>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+    ${workers.length===0?`<div class="empty-state"><div class="empty-icon">👷</div><div class="empty-title">لا يوجد عمال أو مسيرون</div></div>`:''}
+    <div class="pagination">${Array.from({length:pages},(_,i)=>`<button class="page-btn ${i+1===page?'active':''}" onclick="renderWorkers(${i+1})">${i+1}</button>`).join('')}</div>`;
+  }catch(e){showToast('فشل تحميل العمال: '+e.message,'error');}finally{hideLoading();}
+}
+function filterWorkers(btn,type){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
+  document.querySelectorAll('#workersGrid .worker-card').forEach(c=>{c.style.display=type==='all'||c.dataset.type===type?'':'none';});
+}
+function showWorkerModal(id=null,defaultType='worker'){
+  buildModal('wkModal',id?'تعديل':'إضافة عامل / مسيّر',`
+    <div class="form-group"><label class="form-label">النوع *</label><div class="d-flex gap-2"><button type="button" id="wt_worker" class="status-opt ${defaultType==='worker'?'sel-paid':''}" onclick="selectWorkerType('worker')"><i class="fas fa-hard-hat me-1"></i>عامل</button><button type="button" id="wt_manager" class="status-opt ${defaultType==='manager'?'sel-paid':''}" onclick="selectWorkerType('manager')"><i class="fas fa-user-tie me-1"></i>مسيّر</button></div></div>
+    <div class="row-2">
+      <div class="form-group"><label class="form-label">الاسم الكامل *</label><input type="text" id="w_name" class="form-control"></div>
+      <div class="form-group"><label class="form-label">الهاتف</label><input type="tel" id="w_phone" class="form-control"></div>
+      <div class="form-group"><label class="form-label">الراتب الشهري (دج) *</label><input type="number" id="w_salary" class="form-control" placeholder="30000" min="0" step="500"></div>
+      <div class="form-group"><label class="form-label">سعر ساعة إضافية (دج)</label><input type="number" id="w_hourly" class="form-control" placeholder="300" min="0"></div>
+      <div class="form-group"><label class="form-label">المهنة / المنصب</label><input type="text" id="w_job" class="form-control" placeholder="كهربائي، مدير المشاريع..."></div>
+      <div class="form-group"><label class="form-label">تاريخ التوظيف</label><input type="date" id="w_hire" class="form-control"></div>
+    </div>
+    <div class="form-group"><label class="form-label">ملاحظات</label><textarea id="w_notes" class="form-control" rows="2"></textarea></div>
+  `,`<button class="btn btn-secondary" onclick="closeModal('wkModal')">إلغاء</button><button class="btn btn-primary" onclick="saveWorker('${id||''}')"><i class="fas fa-save"></i> حفظ</button>`);
+  if(id){getCol('workers').then(list=>{const w=list.find(x=>x.id===id);if(!w)return;selectWorkerType(w.worker_type||'worker');document.getElementById('w_name').value=w.name||'';document.getElementById('w_phone').value=w.phone||'';document.getElementById('w_salary').value=fromCents(w.monthly_salary)||'';document.getElementById('w_hourly').value=fromCents(w.hourly_rate||0)||'';document.getElementById('w_job').value=w.job_title||'';document.getElementById('w_hire').value=w.hire_date||'';document.getElementById('w_notes').value=w.notes||'';});}
+}
+function selectWorkerType(type){
+  document.getElementById('wt_worker')?.classList.toggle('sel-paid',type==='worker');
+  document.getElementById('wt_manager')?.classList.toggle('sel-paid',type==='manager');
+  window._selectedWorkerType=type;
+}
+window._selectedWorkerType='worker';
+async function saveWorker(id){
+  const name=document.getElementById('w_name').value.trim();const salary=parseFloat(document.getElementById('w_salary').value);
+  if(!name||isNaN(salary)||salary<0){showToast('الاسم والراتب مطلوبان','error');return;}
+  showLoading();
+  try{
+    const data={name,phone:document.getElementById('w_phone').value,monthly_salary:toCents(salary),hourly_rate:toCents(parseFloat(document.getElementById('w_hourly').value)||0),job_title:document.getElementById('w_job').value,hire_date:document.getElementById('w_hire').value,notes:document.getElementById('w_notes').value,worker_type:window._selectedWorkerType||'worker',updated_at:new Date().toISOString()};
+    let list=await getCol('workers');
+    if(id){const i=list.findIndex(w=>w.id===id);if(i!==-1)list[i]={...list[i],...data};}
+    else list.push({id:uuid(),...data,created_by:currentUser.uid,created_at:new Date().toISOString()});
+    await saveCol('workers',list);closeModal('wkModal');showToast(id?'تم تعديل البيانات':'✅ تم الإضافة','success');renderWorkers();
+  }catch(e){showToast(e.message,'error');}finally{hideLoading();}
+}
+function workerActionModal(wId,type){
+  const titles={advance:'إضافة تسبيق',overtime:'ساعات إضافية',absence:'تسجيل غياب'};
+  const bodies={
+    advance:`<div class="form-group"><label class="form-label">المبلغ (دج) *</label><input type="number" id="wa_val" class="form-control" placeholder="0" step="500"></div><div class="form-group"><label class="form-label">التاريخ</label><input type="date" id="wa_date" class="form-control" value="${today()}"></div><div class="form-group"><label class="form-label">ملاحظات</label><textarea id="wa_notes" class="form-control" rows="2"></textarea></div>`,
+    overtime:`<div class="form-group"><label class="form-label">عدد الساعات *</label><input type="number" id="wa_val" class="form-control" placeholder="0" min="0.5" step="0.5"></div><div class="form-group"><label class="form-label">التاريخ</label><input type="date" id="wa_date" class="form-control" value="${today()}"></div><div class="form-group"><label class="form-label">ملاحظات</label><textarea id="wa_notes" class="form-control" rows="2"></textarea></div>`,
+    absence:`<div class="form-group"><label class="form-label">عدد الأيام *</label><input type="number" id="wa_val" class="form-control" placeholder="1" min="0.5" step="0.5"></div><div class="form-group"><label class="form-label">تاريخ البدء</label><input type="date" id="wa_date" class="form-control" value="${today()}"></div><div class="form-group"><label class="form-label">نوع الغياب</label><select id="wa_paid" class="form-control"><option value="false">بدون تبرير (يُخصم)</option><option value="true">إجازة مدفوعة</option></select></div><div class="form-group"><label class="form-label">ملاحظات</label><textarea id="wa_notes" class="form-control" rows="2"></textarea></div>`
+  };
+  const btns={advance:'btn-warning',overtime:'btn-primary',absence:'btn-danger'};
+  buildModal('waModal',titles[type],bodies[type],`<button class="btn btn-secondary" onclick="closeModal('waModal')">إلغاء</button><button class="btn ${btns[type]}" onclick="saveWorkerAction('${wId}','${type}')"><i class="fas fa-save"></i> حفظ</button>`);
+}
+async function saveWorkerAction(wId,type){
+  const val=parseFloat(document.getElementById('wa_val').value);
+  if(isNaN(val)||val<=0){showToast('القيمة غير صحيحة','error');return;}
+  showLoading();
+  try{
+    const entry={id:uuid(),worker_id:wId,date:document.getElementById('wa_date').value,notes:document.getElementById('wa_notes').value,created_by:currentUser.uid};
+    if(type==='advance'){entry.amount=toCents(val);let arr=await getCol('worker_advances');arr.push(entry);await saveCol('worker_advances',arr);}
+    else if(type==='overtime'){entry.hours=val;let arr=await getCol('worker_overtime');arr.push(entry);await saveCol('worker_overtime',arr);}
+    else{entry.days=val;entry.is_paid=document.getElementById('wa_paid').value==='true';let arr=await getCol('worker_absences');arr.push(entry);await saveCol('worker_absences',arr);}
+    closeModal('waModal');showToast('✅ تم الحفظ','success');renderWorkers();
+  }catch(e){showToast(e.message,'error');}finally{hideLoading();}
+}
+async function showWorkerDetails(wId){
+  const[workers,advances,overtimes,absences]=await Promise.all([getCol('workers'),getCol('worker_advances'),getCol('worker_overtime'),getCol('worker_absences')]);
+  const w=workers.find(x=>x.id===wId);if(!w)return;
+  const wAdv=advances.filter(a=>a.worker_id===wId).sort((a,b)=>new Date(b.date)-new Date(a.date));
+  const wOv=overtimes.filter(o=>o.worker_id===wId);const wAbs=absences.filter(a=>a.worker_id===wId);
+  buildModal('wdModal',`تفاصيل: ${w.name}`,`
+    <div class="tab-bar"><button class="tab-btn active" onclick="switchTab(this,'wd_adv')">تسبيقات (${wAdv.length})</button><button class="tab-btn" onclick="switchTab(this,'wd_ov')">إضافي (${wOv.length})</button><button class="tab-btn" onclick="switchTab(this,'wd_abs')">غياب (${wAbs.length})</button></div>
+    <div id="wd_adv">${wAdv.length?wAdv.map(a=>`<div class="info-row"><span>${escH(a.date)}</span><span class="text-warning fw-bold">${fmtCur(a.amount)}</span></div>`).join(''):`<div class="empty-state" style="padding:20px"><div class="empty-icon">💸</div><div class="empty-title">لا توجد تسبيقات</div></div>`}</div>
+    <div id="wd_ov" style="display:none">${wOv.length?wOv.map(o=>`<div class="info-row"><span>${escH(o.date)}</span><span class="text-primary fw-bold">${o.hours} ساعة</span></div>`).join(''):`<div class="empty-state" style="padding:20px"><div class="empty-icon">⏰</div><div class="empty-title">لا توجد ساعات إضافية</div></div>`}</div>
+    <div id="wd_abs" style="display:none">${wAbs.length?wAbs.map(a=>`<div class="info-row"><span>${escH(a.date)}</span><div><span class="text-danger fw-bold">${a.days} يوم</span> <span class="badge ${a.is_paid?'badge-success':'badge-danger'}">${a.is_paid?'مدفوع':'خصم'}</span></div></div>`).join(''):`<div class="empty-state" style="padding:20px"><div class="empty-icon">📅</div><div class="empty-title">لا يوجد غياب</div></div>`}</div>
+  `);
+}
+function switchTab(btn,id){document.querySelectorAll('#wdModal .tab-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');['wd_adv','wd_ov','wd_abs'].forEach(x=>{const el=document.getElementById(x);if(el)el.style.display=x===id?'block':'none';});}
+async function genPayroll(wId){
+  showLoading();
+  try{
+    const[workers,advances,overtimes,absences,settings]=await Promise.all([getCol('workers'),getCol('worker_advances'),getCol('worker_overtime'),getCol('worker_absences'),getCol('settings')]);
+    const w=workers.find(x=>x.id===wId);if(!w)throw new Error('العامل غير موجود');const s=settings[0]||{};
+    const advSum=advances.filter(a=>a.worker_id===wId).reduce((s,a)=>s+a.amount,0);
+    const ovSum=overtimes.filter(o=>o.worker_id===wId).reduce((s,o)=>s+o.hours,0);
+    const absSum=absences.filter(a=>a.worker_id===wId&&!a.is_paid).reduce((s,a)=>s+a.days,0);
+    const ovPay=toCents(ovSum*fromCents(w.hourly_rate||0));
+    const absDeduct=toCents(absSum*fromCents(w.monthly_salary)/30);
+    const totalSal=w.monthly_salary+ovPay-absDeduct;const netPay=totalSal-advSum;
+    buildModal('prModal',`كشف راتب: ${w.name}`,`
+      <div class="algerian-invoice">
+        <div style="display:flex;justify-content:space-between;border-bottom:2px solid #1e3a5f;padding-bottom:14px;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+          <div><div class="inv-co-ar">${escH(s.companyNameAr||'Sofazi')}</div><div class="inv-co-fr">${escH(s.companyNameFr||'SOFAZI')}</div></div>
+          <div style="text-align:left"><div style="font-weight:900;color:#1e3a5f;font-size:1.1rem">BULLETIN DE PAIE</div><div style="font-size:.72rem;color:#64748b">${new Date().toLocaleDateString('fr-DZ')}</div></div>
+        </div>
+        <div style="margin:10px 0;font-size:.85rem;background:#f8fafc;padding:10px;border-radius:8px">
+          <strong>الموظف:</strong> ${escH(w.name)} <span class="badge badge-${w.worker_type==='manager'?'purple':'info'}">${w.worker_type==='manager'?'مسيّر':'عامل'}</span>${w.job_title?` — ${escH(w.job_title)}`:''}${w.hire_date?` | توظيف: ${escH(w.hire_date)}`:''}
+        </div>
+        <table class="inv-table"><thead><tr><th>البند</th><th>التفاصيل</th><th>المبلغ</th></tr></thead>
+        <tbody>
+          <tr><td>الراتب الأساسي</td><td>—</td><td>${fmtCur(w.monthly_salary)}</td></tr>
+          <tr><td>ساعات إضافية</td><td>${ovSum} ساعة × ${fmtCur(w.hourly_rate||0)}</td><td class="text-success">+${fmtCur(ovPay)}</td></tr>
+          <tr><td>خصم الغياب</td><td>${absSum} يوم</td><td class="text-danger">-${fmtCur(absDeduct)}</td></tr>
+        </tbody></table>
+        <div style="margin-top:10px"><div class="inv-total-row grand"><span>إجمالي الراتب</span><span>${fmtCur(totalSal)}</span></div><div class="inv-total-row"><span class="text-warning">التسبيقات المسحوبة</span><span class="text-warning">-${fmtCur(advSum)}</span></div><div class="inv-total-row grand"><span>صافي الراتب المستحق</span><span class="${netPay<0?'text-danger':'text-success'}">${fmtCur(netPay)}</span></div></div>
+        <div class="inv-sigs"><div class="sig-box">توقيع المدير<div class="sig-line"></div></div><div class="sig-box">توقيع الموظف<div class="sig-line"></div></div></div>
+      </div>
+    `,`<button class="btn btn-secondary" onclick="closeModal('prModal')">إغلاق</button><button class="btn btn-primary" onclick="window.print()"><i class="fas fa-print"></i> طباعة</button>`);
+  }catch(e){showToast(e.message,'error');}finally{hideLoading();}
+}
+async function showArchiveModal(){
+  showLoading();
+  try{
+    const[workers,advances,overtimes,absences]=await Promise.all([getCol('workers'),getCol('worker_advances'),getCol('worker_overtime'),getCol('worker_absences')]);
+    const totAdv=advances.reduce((s,a)=>s+a.amount,0);
+    const totOv=overtimes.reduce((s,o)=>s+o.hours,0);
+    const totAbs=absences.filter(a=>!a.is_paid).reduce((s,a)=>s+a.days,0);
+    buildModal('archModal','الأرشيف المالي',`
+      <div class="stat-grid" style="grid-template-columns:1fr 1fr 1fr">
+        <div class="stat-card blue"><div class="stat-icon"><i class="fas fa-users"></i></div><div class="stat-val">${workers.length}</div><div class="stat-label">إجمالي الموظفين</div></div>
+        <div class="stat-card amber"><div class="stat-icon"><i class="fas fa-hand-holding-usd"></i></div><div class="stat-val">${fmtCur(totAdv)}</div><div class="stat-label">إجمالي التسبيقات</div></div>
+        <div class="stat-card red"><div class="stat-icon"><i class="fas fa-calendar-times"></i></div><div class="stat-val">${totAbs}</div><div class="stat-label">أيام الغياب</div></div>
+      </div>
+      <div class="table-wrap mt-3"><table><thead><tr><th>الموظف</th><th>النوع</th><th>الراتب</th><th>تسبيقاته</th><th>ساعاته</th><th>غيابه</th></tr></thead>
+      <tbody>${workers.map(w=>{const wAdv=advances.filter(a=>a.worker_id===w.id).reduce((s,a)=>s+a.amount,0);const wOv=overtimes.filter(o=>o.worker_id===w.id).reduce((s,o)=>s+o.hours,0);const wAbs=absences.filter(a=>a.worker_id===w.id&&!a.is_paid).reduce((s,a)=>s+a.days,0);return`<tr><td><strong>${escH(w.name)}</strong></td><td><span class="badge badge-${w.worker_type==='manager'?'purple':'info'}">${w.worker_type==='manager'?'مسيّر':'عامل'}</span></td><td>${fmtCur(w.monthly_salary)}</td><td class="text-warning">${fmtCur(wAdv)}</td><td>${wOv}س</td><td class="text-danger">${wAbs}ي</td></tr>`;}).join('')}</tbody></table></div>
+    `,`<button class="btn btn-secondary" onclick="closeModal('archModal')">إغلاق</button><button class="btn btn-primary" onclick="window.print()"><i class="fas fa-print"></i> طباعة</button>`,true);
+  }catch(e){showToast(e.message,'error');}finally{hideLoading();}
+}
+
+// ==================== EXPENSES (دين / مدفوع + صورة) ====================
+async function renderExpenses(page=1,limit=15){
+  showLoading();
+  try{
+    let expenses=await getCol('expenses');
+    if(currentUser.role!=='admin')expenses=expenses.filter(e=>e.created_by===currentUser.uid);
+    expenses.sort((a,b)=>new Date(b.expense_date||b.created_at||0)-new Date(a.expense_date||a.created_at||0));
+    const categories=await getCol('expense_categories');
+    const pages=Math.ceil(expenses.length/limit);const paged=expenses.slice((page-1)*limit,page*limit);
+    const totalPaid=expenses.filter(e=>e.payment_status==='paid').reduce((s,e)=>s+e.amount,0);
+    const totalDebt=expenses.filter(e=>e.payment_status==='debt').reduce((s,e)=>s+e.amount,0);
+    document.getElementById('main').innerHTML=`
+    <div class="page-header">
+      <div class="page-title">المصاريف</div>
+      <button class="btn btn-primary" onclick="showExpenseModal()"><i class="fas fa-plus"></i> مصروف جديد</button>
+    </div>
+    <div class="stat-grid" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:16px">
+      <div class="stat-card green"><div class="stat-icon"><i class="fas fa-check-circle"></i></div><div class="stat-val">${fmtCur(totalPaid)}</div><div class="stat-label">المدفوع</div></div>
+      <div class="stat-card red"><div class="stat-icon"><i class="fas fa-clock"></i></div><div class="stat-val">${fmtCur(totalDebt)}</div><div class="stat-label">الديون</div></div>
+      <div class="stat-card blue"><div class="stat-icon"><i class="fas fa-coins"></i></div><div class="stat-val">${fmtCur(totalPaid+totalDebt)}</div><div class="stat-label">الإجمالي</div></div>
+    </div>
+    <div class="filter-bar">
+      <button class="filter-btn active" onclick="filterExpStatus(this,'all')">الكل (${expenses.length})</button>
+      <button class="filter-btn" onclick="filterExpStatus(this,'paid')"><i class="fas fa-check me-1"></i>مدفوع (${expenses.filter(e=>e.payment_status==='paid').length})</button>
+      <button class="filter-btn" onclick="filterExpStatus(this,'debt')"><i class="fas fa-clock me-1"></i>دين (${expenses.filter(e=>e.payment_status==='debt').length})</button>
+    </div>
+    <div class="table-wrap">
+      <table><thead><tr><th>البيان</th><th>الحالة</th><th>التصنيف</th><th>التاريخ</th><th>المبلغ</th><th>فاتورة</th><th></th></tr></thead>
+      <tbody id="expTbody">${paged.map(e=>{
+        const cat=categories.find(c=>c.id===e.category_id);
+        const isDebt=e.payment_status==='debt';
+        return`<tr data-status="${e.payment_status||'paid'}">
+          <td><strong>${escH(e.description)}</strong>${e.notes?`<br><span style="font-size:.72rem;color:var(--text3)">${escH(e.notes)}</span>`:''}
+          </td>
+          <td><span class="badge ${isDebt?'badge-warning':'badge-success'}">${isDebt?'دين':'مدفوع'}</span></td>
+          <td>${cat?`<span class="badge" style="background:${cat.color}20;color:${cat.color}">${escH(cat.name)}</span>`:'—'}</td>
+          <td style="white-space:nowrap">${escH(e.expense_date||'—')}</td>
+          <td class="${isDebt?'text-warning':'text-danger'} fw-bold">${fmtCur(e.amount)}</td>
+          <td>${e.receipt_image?`<img src="${e.receipt_image}" class="img-thumb" onclick="viewImage('${e.id}')" title="عرض الفاتورة">`:'—'}</td>
+          <td><div style="display:flex;gap:5px">
+            <button class="btn btn-xs btn-secondary" onclick="showExpenseModal('${e.id}')"><i class="fas fa-edit"></i></button>
+            ${currentUser.role==='admin'?`<button class="btn btn-xs btn-danger" onclick="deleteExpense('${e.id}')"><i class="fas fa-trash"></i></button>`:''}
+          </div></td>
+        </tr>`;}).join('')}</tbody>
+      </table>
+    </div>
+    ${expenses.length===0?`<div class="empty-state"><div class="empty-icon">💸</div><div class="empty-title">لا توجد مصاريف</div></div>`:''}
+    <div class="pagination">${Array.from({length:pages},(_,i)=>`<button class="page-btn ${i+1===page?'active':''}" onclick="renderExpenses(${i+1})">${i+1}</button>`).join('')}</div>`;
+  }catch(e){showToast('فشل تحميل المصاريف','error');}finally{hideLoading();}
+}
+function filterExpStatus(btn,status){document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');document.querySelectorAll('#expTbody tr').forEach(r=>{r.style.display=status==='all'||r.dataset.status===status?'':'none';});}
+async function showExpenseModal(id=null){
+  const categories=await getCol('expense_categories');
+  buildModal('expModal',id?'تعديل مصروف':'مصروف جديد',`
+    <div class="form-group"><label class="form-label">حالة الدفع *</label>
+      <div class="status-toggle">
+        <button type="button" id="es_paid" class="status-opt sel-paid" onclick="selectExpStatus('paid')"><i class="fas fa-check-circle me-1"></i>مدفوع</button>
+        <button type="button" id="es_debt" class="status-opt" onclick="selectExpStatus('debt')"><i class="fas fa-clock me-1"></i>دين (غير مدفوع)</button>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">البيان *</label><input type="text" id="exp_desc" class="form-control" placeholder="وصف المصروف"></div>
+    <div class="row-2">
+      <div class="form-group"><label class="form-label">المبلغ (دج) *</label><input type="number" id="exp_amt" class="form-control" placeholder="0" min="0" step="100"></div>
+      <div class="form-group"><label class="form-label">التاريخ</label><input type="date" id="exp_date" class="form-control" value="${today()}"></div>
+      <div class="form-group" style="grid-column:1/-1"><label class="form-label">التصنيف</label><select id="exp_cat" class="form-control"><option value="">بدون تصنيف</option>${categories.map(c=>`<option value="${c.id}">${escH(c.name)}</option>`).join('')}</select></div>
+    </div>
+    <div class="form-group"><label class="form-label">ملاحظات</label><textarea id="exp_notes" class="form-control" rows="2"></textarea></div>
+    <div class="form-group">
+      <label class="form-label">صورة الفاتورة (اختياري — أقصى 2MB)</label>
+      <div class="img-upload-area" id="imgUploadArea" onclick="document.getElementById('exp_img_input').click()">
+        <i class="fas fa-camera fa-2x mb-2" style="color:var(--text3)"></i>
+        <div style="font-size:.82rem;color:var(--text2)">انقر لرفع صورة الفاتورة</div>
+        <div style="font-size:.72rem;color:var(--text3)">JPG, PNG — أقصى 2MB</div>
+      </div>
+      <input type="file" id="exp_img_input" accept="image/*" style="display:none" onchange="previewExpImage(this)">
+      <div id="exp_img_preview" style="display:none;margin-top:8px"></div>
+    </div>
+  `,`<button class="btn btn-secondary" onclick="closeModal('expModal')">إلغاء</button><button class="btn btn-primary" onclick="saveExpense('${id||''}')"><i class="fas fa-save"></i> حفظ</button>`);
+  window._expImgB64=null;
+  if(id){
+    const list=await getCol('expenses');const e=list.find(x=>x.id===id);
+    if(e){
+      selectExpStatus(e.payment_status||'paid');
+      document.getElementById('exp_desc').value=e.description||'';
+      document.getElementById('exp_amt').value=fromCents(e.amount)||'';
+      document.getElementById('exp_date').value=e.expense_date||'';
+      document.getElementById('exp_cat').value=e.category_id||'';
+      document.getElementById('exp_notes').value=e.notes||'';
+      if(e.receipt_image){window._expImgB64=e.receipt_image;const prev=document.getElementById('exp_img_preview');prev.style.display='block';prev.innerHTML=`<img src="${e.receipt_image}" style="max-width:100%;max-height:150px;object-fit:contain;border-radius:8px;border:2px solid var(--success)">`;}
+    }
+  }
+}
+function selectExpStatus(status){
+  window._expStatus=status;
+  document.getElementById('es_paid')?.classList.toggle('sel-paid',status==='paid');
+  document.getElementById('es_paid')?.classList.remove('sel-debt');
+  document.getElementById('es_debt')?.classList.toggle('sel-debt',status==='debt');
+  document.getElementById('es_debt')?.classList.remove('sel-paid');
+}
+window._expStatus='paid';window._expImgB64=null;
+function previewExpImage(input){
+  const file=input.files[0];if(!file)return;
+  if(file.size>2*1024*1024){showToast('حجم الصورة يجب أن يكون أقل من 2MB','error');return;}
+  const r=new FileReader();
+  r.onload=e=>{
+    window._expImgB64=e.target.result;
+    const area=document.getElementById('imgUploadArea');area.classList.add('has-img');
+    const prev=document.getElementById('exp_img_preview');prev.style.display='block';
+    prev.innerHTML=`<img src="${e.target.result}" class="img-preview"><button class="btn btn-xs btn-danger mt-2" onclick="clearExpImage()"><i class="fas fa-trash"></i> حذف الصورة</button>`;
+  };r.readAsDataURL(file);
+}
+function clearExpImage(){window._expImgB64=null;document.getElementById('exp_img_preview').style.display='none';document.getElementById('imgUploadArea').classList.remove('has-img');document.getElementById('exp_img_input').value='';}
+async function saveExpense(id){
+  const desc=document.getElementById('exp_desc').value.trim();const amt=parseFloat(document.getElementById('exp_amt').value);
+  if(!desc||isNaN(amt)||amt<=0){showToast('البيان والمبلغ مطلوبان','error');return;}
+  showLoading();
+  try{
+    const data={description:desc,amount:toCents(amt),expense_date:document.getElementById('exp_date').value,category_id:document.getElementById('exp_cat').value||null,notes:document.getElementById('exp_notes').value,payment_status:window._expStatus||'paid',receipt_image:window._expImgB64||null,updated_at:new Date().toISOString()};
+    let list=await getCol('expenses');
+    if(id){const i=list.findIndex(e=>e.id===id);if(i!==-1)list[i]={...list[i],...data};}
+    else list.push({id:uuid(),...data,created_by:currentUser.uid,created_at:new Date().toISOString()});
+    await saveCol('expenses',list);
+    closeModal('expModal');showToast(id?'تم التعديل':'✅ تم إضافة المصروف','success');renderExpenses();
+  }catch(e){showToast(e.message,'error');}finally{hideLoading();}
+}
+async function deleteExpense(id){
+  if(!confirm('حذف هذا المصروف؟'))return;showLoading();
+  try{let list=await getCol('expenses');list=list.filter(e=>e.id!==id);await saveCol('expenses',list);showToast('تم الحذف','success');renderExpenses();}
+  catch(e){showToast(e.message,'error');}finally{hideLoading();}
+}
+async function viewImage(expId){
+  const list=await getCol('expenses');const e=list.find(x=>x.id===expId);
+  if(!e?.receipt_image)return;
+  buildModal('imgModal',`فاتورة: ${escH(e.description)}`,`<img src="${e.receipt_image}" style="width:100%;border-radius:10px;display:block">`,`<button class="btn btn-secondary" onclick="closeModal('imgModal')">إغلاق</button><a href="${e.receipt_image}" download="receipt_${expId}.jpg" class="btn btn-primary"><i class="fas fa-download"></i> تحميل</a>`);
+}
+
+// ==================== USERS ====================
+async function renderUsers(){
+  showLoading();
+  try{
+    if(currentUser.role!=='admin'){showToast('هذه الصفحة للمدير فقط','error');loadPage('dashboard');return;}
+    const users=await getCol('users');
+    document.getElementById('main').innerHTML=`
+    <div class="page-header">
+      <div class="page-title">المستخدمون<small>${users.length} مستخدم مسجل</small></div>
+      <button class="btn btn-primary" onclick="showUserModal()"><i class="fas fa-user-plus"></i> مستخدم جديد</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:13px">
+      ${users.map(u=>`
+        <div class="card">
+          <div class="card-body">
+            <div class="d-flex align-center gap-3 mb-3">
+              <div class="user-av" style="background:${avatarColor(u.full_name||u.email)};width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:800;color:#fff;flex-shrink:0">${(u.full_name||u.email).charAt(0).toUpperCase()}</div>
+              <div>
+                <div style="font-weight:800;font-size:.93rem">${escH(u.full_name||'—')}</div>
+                <div style="font-size:.75rem;color:var(--text3)">${escH(u.email)}</div>
+              </div>
+            </div>
+            <div class="d-flex justify-between align-center mb-3">
+              <span class="${u.role==='admin'?'role-admin':'role-manager'}">${u.role==='admin'?'مدير':'مسيّر'}</span>
+              <span class="badge ${u.is_active?'badge-success':'badge-danger'}">${u.is_active?'نشط':'معطل'}</span>
+            </div>
+            <div style="font-size:.72rem;color:var(--text3);margin-bottom:10px">تسجيل: ${escH(u.created_at?u.created_at.slice(0,10):'—')}</div>
+            <div class="d-flex gap-2">
+              <button class="btn btn-sm btn-secondary" onclick="showUserModal('${u.id}')"><i class="fas fa-edit"></i> تعديل</button>
+              <button class="btn btn-sm ${u.is_active?'btn-warning':'btn-success'}" onclick="toggleUserStatus('${u.id}',${!u.is_active})">${u.is_active?'<i class="fas fa-ban"></i> تعطيل':'<i class="fas fa-check"></i> تفعيل'}</button>
+              ${u.id!==currentUser.uid?`<button class="btn btn-sm btn-danger" onclick="deleteUser('${u.id}')"><i class="fas fa-trash"></i></button>`:''}
+            </div>
+          </div>
+        </div>`).join('')}
+    </div>
+    ${users.length===0?`<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-title">لا يوجد مستخدمون</div></div>`:''}`;
+  }catch(e){showToast('فشل تحميل المستخدمين','error');}finally{hideLoading();}
+}
+function showUserModal(id=null){
+  buildModal('usrModal',id?'تعديل مستخدم':'مستخدم جديد',`
+    <div class="form-group"><label class="form-label">الاسم الكامل *</label><input type="text" id="u_name" class="form-control"></div>
+    <div class="form-group"><label class="form-label">البريد الإلكتروني *</label><input type="email" id="u_email" class="form-control"></div>
+    <div class="form-group"><label class="form-label">كلمة المرور${id?' (اتركها فارغة لعدم التغيير)':' *'}</label><input type="password" id="u_pass" class="form-control" placeholder="${id?'اتركها فارغة':'6+ أحرف'}"></div>
+    <div class="form-group"><label class="form-label">الدور</label><select id="u_role" class="form-control"><option value="admin">مدير (Admin)</option><option value="manager">مسيّر (Manager)</option></select></div>
+  `,`<button class="btn btn-secondary" onclick="closeModal('usrModal')">إلغاء</button><button class="btn btn-primary" onclick="saveUser('${id||''}')"><i class="fas fa-save"></i> حفظ</button>`);
+  if(id){getCol('users').then(list=>{const u=list.find(x=>x.id===id);if(u){document.getElementById('u_name').value=u.full_name||'';document.getElementById('u_email').value=u.email||'';document.getElementById('u_role').value=u.role||'admin';}});}
+}
+async function saveUser(id){
+  if(currentUser.role!=='admin'){showToast('غير مصرح','error');return;}
+  const name=document.getElementById('u_name').value.trim();const email=document.getElementById('u_email').value.trim();const role=document.getElementById('u_role').value;
+  if(!name||!email){showToast('الاسم والبريد مطلوبان','error');return;}
+  showLoading();
+  try{
+    let users=await getCol('users');
+    if(id){
+      const i=users.findIndex(u=>u.id===id);
+      if(i!==-1){users[i]={...users[i],full_name:name,email,role};await saveCol('users',users);showToast('تم تعديل المستخدم','success');}
+    }else{
+      const pass=document.getElementById('u_pass').value;
+      if(!pass){showToast('كلمة المرور مطلوبة','error');return;}
+      if(users.find(u=>u.email===email)){showToast('البريد مستخدم بالفعل','error');return;}
+      const cred=await auth.createUserWithEmailAndPassword(email,pass);
+      const newU={id:cred.user.uid,email,full_name:name,role,is_active:true,created_at:new Date().toISOString(),userId:cred.user.uid};
+      users.push(newU);await saveCol('users',users);
+      // Sign back in as main user (Firebase auto-signs in new user)
+      showToast('✅ تم إنشاء المستخدم. سيحتاج لتسجيل الدخول بحسابه.','success');
+    }
+    closeModal('usrModal');renderUsers();
+  }catch(e){showToast(e.message,'error');}finally{hideLoading();}
+}
+async function toggleUserStatus(id,active){
+  showLoading();
+  try{let users=await getCol('users');const i=users.findIndex(u=>u.id===id);if(i!==-1){users[i].is_active=active;await saveCol('users',users);}showToast(active?'تم تفعيل المستخدم':'تم تعطيل المستخدم','success');renderUsers();}
+  catch(e){showToast(e.message,'error');}finally{hideLoading();}
+}
+async function deleteUser(id){
+  if(id===currentUser.uid){showToast('لا يمكن حذف حسابك الحالي','error');return;}
+  if(!confirm('حذف هذا المستخدم نهائياً؟'))return;
+  showLoading();
+  try{let users=await getCol('users');users=users.filter(u=>u.id!==id);await saveCol('users',users);showToast('تم حذف المستخدم','success');renderUsers();}
+  catch(e){showToast(e.message,'error');}finally{hideLoading();}
+}
+
+// ==================== SYNC ====================
+async function renderSync(){
+  document.getElementById('main').innerHTML=`
+  <div class="page-header"><div class="page-title">المزامنة والنسخ الاحتياطي</div></div>
+  <div class="row-2">
+    <div class="card"><div class="card-header"><i class="fas fa-download me-2" style="color:var(--success)"></i>تصدير النسخة الاحتياطية</div><div class="card-body"><p style="font-size:.84rem;color:var(--text2);margin-bottom:14px">تصدير جميع البيانات كملف JSON محمي.</p><button class="btn btn-success w-100" onclick="exportData()"><i class="fas fa-file-export"></i> تصدير JSON</button></div></div>
+    <div class="card"><div class="card-header"><i class="fas fa-upload me-2" style="color:var(--warning)"></i>استيراد البيانات</div><div class="card-body"><p style="font-size:.84rem;color:var(--text2);margin-bottom:14px">⚠️ سيستبدل البيانات الحالية.</p><button class="btn btn-warning w-100" onclick="importData()"><i class="fas fa-file-import"></i> استيراد JSON</button></div></div>
+  </div>
+  <div class="card mt-4"><div class="card-header"><i class="fas fa-cloud me-2"></i>حالة الاتصال</div><div class="card-body">
+    <div class="info-row"><span class="info-label">الاتصال</span><span class="badge ${navigator.onLine?'badge-success':'badge-danger'}">${navigator.onLine?'متصل بالإنترنت':'غير متصل'}</span></div>
+    <div class="info-row"><span class="info-label">قاعدة البيانات</span><span class="fw-bold">Firebase Firestore</span></div>
+    <div class="info-row"><span class="info-label">المستخدم</span><span class="fw-bold">${escH(currentUser?.email||'—')}</span></div>
+    <div class="info-row" style="border:none"><span class="info-label">الوضع الأوف لاين</span><span class="badge badge-success">مفعّل</span></div>
+  </div></div>`;
+}
+async function exportData(){
+  showLoading();
+  try{
+    const cols=['customers','invoices','invoice_items','invoice_payments','workers','worker_advances','worker_overtime','worker_absences','workshop_debts','expenses','expense_categories','settings','users'];
+    const data={};for(const c of cols)data[c]=await getCol(c);
+    const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`sofazi-backup-${today()}.json`;a.click();
+    showToast('✅ تم تصدير البيانات','success');
+  }catch(e){showToast(e.message,'error');}finally{hideLoading();}
+}
+function importData(){
+  if(!confirm('⚠️ ستُستبدل جميع البيانات الحالية. هل أنت متأكد؟'))return;
+  const inp=document.createElement('input');inp.type='file';inp.accept='application/json';
+  inp.onchange=async e=>{const f=e.target.files[0];if(!f)return;showLoading();
+    try{const data=JSON.parse(await f.text());for(const k in data)if(data[k])await saveCol(k,data[k]);showToast('✅ تم الاستيراد','success');loadPage('dashboard');}
+    catch(err){showToast('فشل الاستيراد: '+err.message,'error');}finally{hideLoading();}};
+  inp.click();
+}
+
+// ==================== SETTINGS ====================
+async function renderSettings(){
+  showLoading();
+  try{
+    const[settingsArr,categories]=await Promise.all([getCol('settings'),getCol('expense_categories')]);
+    const s=settingsArr[0]||{};const isPWA=window.matchMedia('(display-mode: standalone)').matches;
+    document.getElementById('main').innerHTML=`
+    <div class="page-header"><div class="page-title">الإعدادات</div></div>
+    <div class="card mb-4">
+      <div class="card-header"><i class="fas fa-building me-2" style="color:var(--primary)"></i>إعدادات المؤسسة</div>
+      <div class="card-body">
+        <div class="row-2">
+          <div class="form-group"><label class="form-label">الاسم بالعربية</label><input type="text" id="s_ar" class="form-control" value="${escH(s.companyNameAr||'')}"></div>
+          <div class="form-group"><label class="form-label">الاسم بالفرنسية</label><input type="text" id="s_fr" class="form-control" value="${escH(s.companyNameFr||'')}"></div>
+          <div class="form-group"><label class="form-label">الصيغة القانونية</label><input type="text" id="s_legal" class="form-control" value="${escH(s.legalForm||'SARL')}"></div>
+          <div class="form-group"><label class="form-label">رأس المال</label><input type="text" id="s_cap" class="form-control" value="${escH(s.capital||'')}"></div>
+          <div class="form-group"><label class="form-label">NIF</label><input type="text" id="s_nif" class="form-control" value="${escH(s.companyNif||'')}"></div>
+          <div class="form-group"><label class="form-label">NIS</label><input type="text" id="s_nis" class="form-control" value="${escH(s.companyNis||'')}"></div>
+          <div class="form-group"><label class="form-label">RC</label><input type="text" id="s_rc" class="form-control" value="${escH(s.companyRc||'')}"></div>
+          <div class="form-group"><label class="form-label">ART</label><input type="text" id="s_art" class="form-control" value="${escH(s.companyArt||'')}"></div>
+          <div class="form-group"><label class="form-label">الهاتف</label><input type="text" id="s_phone" class="form-control" value="${escH(s.companyPhone||'')}"></div>
+          <div class="form-group"><label class="form-label">البريد الإلكتروني</label><input type="email" id="s_email" class="form-control" value="${escH(s.companyEmail||'')}"></div>
+          <div class="form-group" style="grid-column:1/-1"><label class="form-label">العنوان</label><textarea id="s_addr" class="form-control" rows="2">${escH(s.companyAddr||'')}</textarea></div>
+        </div>
+        <button class="btn btn-primary" onclick="saveSettings()"><i class="fas fa-save"></i> حفظ الإعدادات</button>
+      </div>
+    </div>
+    <div class="row-2">
+      <div class="card mb-4">
+        <div class="card-header"><i class="fas fa-mobile-alt me-2" style="color:var(--purple)"></i>التطبيق PWA</div>
+        <div class="card-body">
+          ${isPWA?`<div class="badge badge-success mb-3"><i class="fas fa-check me-1"></i>مثبت كـ PWA</div><p style="font-size:.8rem;color:var(--text2)">يعمل كتطبيق مستقل على جهازك.</p>`:`<p style="font-size:.82rem;color:var(--text2);margin-bottom:12px">قم بتثبيت التطبيق للوصول السريع وإمكانية العمل بدون إنترنت.</p><button class="btn btn-success w-100" onclick="installPWA()"><i class="fas fa-download"></i> تثبيت التطبيق</button><p class="text-muted mt-2" style="font-size:.72rem">يتطلب Chrome/Edge على HTTPS</p>`}
+          <hr class="divider">
+          <button class="btn btn-danger w-100 mt-2" onclick="clearCache()"><i class="fas fa-trash-alt"></i> مسح الكاش</button>
+        </div>
+      </div>
+      <div class="card mb-4">
+        <div class="card-header d-flex justify-between align-center"><span><i class="fas fa-tags me-2" style="color:var(--warning)"></i>تصنيفات المصاريف</span><button class="btn btn-xs btn-primary" onclick="showCatModal()"><i class="fas fa-plus"></i></button></div>
+        <div class="card-body" style="padding:12px">
+          ${categories.map(cat=>`<div class="d-flex justify-between align-center mb-2"><span class="badge" style="background:${cat.color}20;color:${cat.color};padding:5px 12px">${escH(cat.name)}</span><div class="d-flex gap-2"><button class="btn btn-xs btn-secondary" onclick="showCatModal('${cat.id}')"><i class="fas fa-edit"></i></button><button class="btn btn-xs btn-danger" onclick="deleteCat('${cat.id}')"><i class="fas fa-trash"></i></button></div></div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+  }catch(e){showToast('فشل تحميل الإعدادات','error');}finally{hideLoading();}
+}
+async function saveSettings(){
+  showLoading();
+  try{
+    let arr=await getCol('settings');const s=arr[0]||{id:'s1'};
+    const u={...s,companyNameAr:document.getElementById('s_ar').value,companyNameFr:document.getElementById('s_fr').value,legalForm:document.getElementById('s_legal').value,capital:document.getElementById('s_cap').value,companyNif:document.getElementById('s_nif').value,companyNis:document.getElementById('s_nis').value,companyRc:document.getElementById('s_rc').value,companyArt:document.getElementById('s_art').value,companyPhone:document.getElementById('s_phone').value,companyEmail:document.getElementById('s_email').value,companyAddr:document.getElementById('s_addr').value};
+    if(arr.length)arr[0]=u;else arr.push(u);
+    await saveCol('settings',arr);updateTopBarName();showToast('✅ تم حفظ الإعدادات','success');
+  }catch(e){showToast(e.message,'error');}finally{hideLoading();}
+}
+async function showCatModal(id=null){
+  buildModal('catModal',id?'تعديل تصنيف':'إضافة تصنيف',`<div class="form-group"><label class="form-label">الاسم *</label><input type="text" id="cat_nm" class="form-control"></div><div class="form-group"><label class="form-label">اللون</label><input type="color" id="cat_clr" class="form-control" style="height:44px;padding:4px" value="#1e40af"></div>`,`<button class="btn btn-secondary" onclick="closeModal('catModal')">إلغاء</button><button class="btn btn-primary" onclick="saveCat('${id||''}')">حفظ</button>`);
+  if(id){const cats=await getCol('expense_categories');const c=cats.find(x=>x.id===id);if(c){document.getElementById('cat_nm').value=c.name||'';document.getElementById('cat_clr').value=c.color||'#1e40af';}}
+}
+async function saveCat(id){
+  const name=document.getElementById('cat_nm').value.trim();if(!name){showToast('الاسم مطلوب','error');return;}
+  showLoading();
+  try{let cats=await getCol('expense_categories');const data={name,color:document.getElementById('cat_clr').value};if(id){const i=cats.findIndex(c=>c.id===id);if(i!==-1)cats[i]={...cats[i],...data};}else cats.push({id:uuid(),...data});await saveCol('expense_categories',cats);closeModal('catModal');showToast('تم حفظ التصنيف','success');renderSettings();}
+  catch(e){showToast(e.message,'error');}finally{hideLoading();}
+}
+async function deleteCat(id){
+  if(!confirm('حذف هذا التصنيف؟'))return;showLoading();
+  try{let cats=await getCol('expense_categories');cats=cats.filter(c=>c.id!==id);await saveCol('expense_categories',cats);showToast('تم الحذف','success');renderSettings();}
+  catch(e){showToast(e.message,'error');}finally{hideLoading();}
+}
+function installPWA(){if(deferredInstall){deferredInstall.prompt();deferredInstall.userChoice.then(r=>{if(r.outcome==='accepted')showToast('✅ تم تثبيت التطبيق','success');deferredInstall=null;});}else showToast('افتح التطبيق عبر HTTPS في Chrome/Edge','info');}
+function clearCache(){if(!confirm('مسح الكاش وإعادة التشغيل؟'))return;localStorage.clear();if('caches' in window)caches.keys().then(ns=>ns.forEach(n=>caches.delete(n)));showToast('جاري إعادة التشغيل...','info');setTimeout(()=>location.reload(true),800);}
+
+// ==================== INIT ====================
+setupFirebase();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
