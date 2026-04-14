@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Sofazi v1.0 - النظام المركزي</title>
+    <!-- PWA manifest -->
+    <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22Sofazi%22%2C%22short_name%22%3A%22Sofazi%22%2C%22display%22%3A%22standalone%22%2C%22theme_color%22%3A%22%231e3a5f%22%2C%22background_color%22%3A%22%23f0f2f5%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22https%3A%2F%2Fcdn.jsdelivr.net%2Fnpm%2Fbootstrap-icons%401.11.1%2Ficons%2Fbox-seam.svg%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
+    <!-- Bootstrap & Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- html2pdf -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <style>
+        * { font-family: 'Tajawal', 'Segoe UI', system-ui; }
+        body { background: #f0f2f5; padding-bottom: 70px; transition: background 0.3s, color 0.3s; }
+        body.dark-mode { background: #121212; color: #e0e0e0; }
+        body.dark-mode .card, body.dark-mode .algerian-invoice, body.dark-mode .invoice-input-panel,
+        body.dark-mode .invoice-preview-panel, body.dark-mode .modal-content { background: #1e1e1e; color: #e0e0e0; border-color: #333; }
+        body.dark-mode .top-bar { background: #0a2a3b; }
+        body.dark-mode .sidebar { background: linear-gradient(135deg, #0a2a3b, #06212e); }
+        .sidebar { position: fixed; top: 0; bottom: 0; right: -280px; width: 280px; z-index: 1050; background: linear-gradient(135deg, #0f2b3d, #1b4a6e); transition: right 0.3s; overflow-y: auto; box-shadow: -2px 0 15px rgba(0,0,0,0.2); }
+        .sidebar.open { right: 0; }
+        .sidebar a { color: white !important; padding: 12px 20px; display: flex; align-items: center; gap: 12px; text-decoration: none; border-bottom: 1px solid rgba(255,255,255,0.08); transition: all 0.2s; font-weight: 500; }
+        .sidebar a i { width: 24px; font-size: 1.1rem; color: white !important; }
+        .sidebar a:hover, .sidebar a.active { background: #0d9488; color: white !important; padding-right: 30px; border-radius: 0 30px 30px 0; margin-left: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+        .sidebar .user-info { padding: 25px 20px; color: white; background: rgba(0,0,0,0.25); text-align: center; border-bottom: 1px solid rgba(255,255,255,0.2); }
+        .top-bar { background: #1e3a5f; color: white; padding: 12px 15px; position: sticky; top: 0; z-index: 1040; display: flex; justify-content: space-between; align-items: center; }
+        .menu-btn { background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; }
+        .content { padding: 15px; max-width: 1400px; margin: 0 auto; }
+        .card { border-radius: 20px; border: none; box-shadow: 0 8px 20px rgba(0,0,0,0.08); margin-bottom: 20px; }
+        .stat-card { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 20px; }
+        .stat-card.primary { background: linear-gradient(135deg, #1e3a5f, #2c5282); }
+        .stat-card.success { background: linear-gradient(135deg, #2b6e3c, #38a169); }
+        .stat-card.danger { background: linear-gradient(135deg, #c53030, #e53e3e); }
+        .stat-card.warning { background: linear-gradient(135deg, #d69e2e, #ed8936); }
+        .alert-toast { position: fixed; bottom: 20px; left: 20px; z-index: 1060; background: #2c3e50; color: white; padding: 12px 20px; border-radius: 40px; display: flex; align-items: center; gap: 12px; animation: slideInUp 0.3s; }
+        @keyframes slideInUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .search-box { position: relative; margin-bottom: 20px; }
+        .search-box input { padding-right: 40px; border-radius: 40px; }
+        .search-box i { position: absolute; right: 15px; top: 12px; color: #9ca3af; }
+        .algerian-invoice { background: white; border-radius: 20px; padding: 28px; font-size: 14px; }
+        .invoice-header { border-bottom: 2px solid #1e3a5f; padding-bottom: 20px; margin-bottom: 20px; }
+        .company-name-ar { font-size: 1.6rem; font-weight: bold; color: #0b2b42; }
+        .company-name-fr { font-size: 1rem; color: #4a627a; }
+        .reg-numbers { background: #f8fafc; padding: 8px 15px; border-radius: 30px; font-size: 0.7rem; display: inline-flex; flex-wrap: wrap; gap: 20px; margin-top: 10px; }
+        .items-table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 0.8rem; }
+        .items-table th, .items-table td { border: 1px solid #cbd5e1; padding: 10px 8px; text-align: center; }
+        .items-table th { background: #eef2ff; }
+        .totals-section { margin-top: 20px; padding-top: 15px; border-top: 1px solid #e2e8f0; }
+        .totals-line { display: flex; justify-content: flex-end; gap: 40px; margin: 8px 0; flex-wrap: wrap; }
+        .totals-line.total { border-top: 2px solid #1e3a5f; padding-top: 10px; margin-top: 8px; font-weight: bold; }
+        .payment-section { margin: 20px 0; background: #f8fafc; padding: 12px 18px; border-radius: 20px; }
+        .signatures { display: flex; justify-content: space-between; margin: 25px 0 15px; padding-top: 15px; border-top: 1px solid #e2e8f0; flex-wrap: wrap; gap: 20px; }
+        .signature-box { text-align: center; width: 45%; min-width: 120px; }
+        .signature-line { border-top: 1px solid #888; margin-top: 30px; padding-top: 8px; width: 100%; }
+        .invoice-layout { display: flex; flex-wrap: wrap; gap: 25px; flex-direction: column; }
+        @media (min-width: 992px) { .invoice-layout { flex-direction: row; } }
+        .invoice-input-panel, .invoice-preview-panel { flex: 1; background: white; border-radius: 28px; box-shadow: 0 12px 28px rgba(0,0,0,0.08); padding: 20px; overflow-x: auto; }
+        .item-row { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; flex-wrap: wrap; }
+        .item-name { flex: 3; min-width: 120px; }
+        .item-qty, .item-price { flex: 1; min-width: 80px; }
+        .remove-item { background: #fee2e2; border: none; width: 34px; height: 34px; border-radius: 30px; cursor: pointer; }
+        .add-item-btn { background: #e2e8f0; border: none; padding: 10px; border-radius: 40px; width: 100%; margin-top: 12px; font-weight: bold; cursor: pointer; }
+        .btn-group { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
+        .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1100; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(4px); }
+        @media print { .no-print, .sidebar, .top-bar, .btn, .modal, .alert-toast { display: none !important; } .algerian-invoice { margin: 0; padding: 0; } body { background: white; } }
+        .dark-mode-toggle { background: none; border: none; color: white; font-size: 1.2rem; cursor: pointer; }
+        .category-badge { display: inline-block; padding: 4px 12px; border-radius: 40px; font-size: 0.75rem; font-weight: 500; }
+        .img-preview { max-width: 100px; max-height: 100px; object-fit: cover; border-radius: 8px; margin-top: 5px; cursor: pointer; }
+        body.login-active .sidebar, body.login-active .top-bar { display: none !important; }
+        .pagination { direction: ltr; display: flex; justify-content: center; margin-top: 20px; gap: 5px; flex-wrap: wrap; }
+        .filter-bar { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; align-items: center; }
+        body.dark-mode .sidebar a { color: white !important; }
+        body.dark-mode .sidebar a i { color: white !important; }
+        .login-container { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #1e3a5f 0%, #0d2b44 100%); }
+        .login-card { width: 100%; max-width: 400px; margin: 20px; border-radius: 28px; box-shadow: 0 25px 50px rgba(0,0,0,0.2); background: white; }
+        body.dark-mode .login-card { background: #1e1e1e; }
+        .company-name-top { font-size: 1.1rem; font-weight: 500; }
+        .firebase-setup-container { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #1e3a5f; }
+        .firebase-setup-card { max-width: 600px; margin: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="sidebar" id="sidebar">
+    <div class="user-info">
+        <i class="fas fa-user-circle fa-3x"></i>
+        <div id="userNameDisplay" class="mt-2 fw-bold"></div>
+        <div><small id="userRoleDisplay"></small></div>
+        <button class="btn btn-sm btn-outline-light mt-3" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> خروج</button>
+    </div>
+    <nav>
+        <a data-page="dashboard"><i class="fas fa-tachometer-alt"></i> لوحة التحكم</a>
+        <a data-page="customers"><i class="fas fa-users"></i> الزبائن</a>
+        <a data-page="invoices"><i class="fas fa-file-invoice"></i> الفواتير</a>
+        <a data-page="invoicesList"><i class="fas fa-list"></i> قائمة الفواتير</a>
+        <a data-page="workshopDebts"><i class="fas fa-building"></i> ديون الورشة</a>
+        <a data-page="workers"><i class="fas fa-hard-hat"></i> عمال الورشة</a>
+        <a data-page="expenses"><i class="fas fa-money-bill-wave"></i> المصاريف</a>
+        <a data-page="sync"><i class="fas fa-cloud-upload-alt"></i> المزامنة</a>
+        <a data-page="settings"><i class="fas fa-cog"></i> الإعدادات</a>
+    </nav>
+</div>
+
+<div class="top-bar">
+    <button class="menu-btn" id="menuToggle"><i class="fas fa-bars"></i></button>
+    <h5 class="m-0 company-name-top" id="companyNameTop">Sofazi <span style="font-size:0.7rem;">v1.0</span></h5>
+    <button class="dark-mode-toggle" id="darkModeToggle"><i class="fas fa-moon"></i></button>
+</div>
+
+<div class="content" id="content"></div>
+
+<script>
+// ================== SERVICE WORKER (PWA) ==================
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register("data:application/javascript," + encodeURIComponent(`
+        self.addEventListener('install', (e) => { e.waitUntil(self.skipWaiting()); });
+        self.addEventListener('activate', (e) => { e.waitUntil(self.clients.claim()); });
+        self.addEventListener('fetch', (e) => { e.respondWith(fetch(e.request).catch(() => caches.match(e.request))); });
+    `)).catch(() => {});
+}
+
+// ================== FIREBASE ==================
+let db, auth;
+let firebaseInitialized = false;
+let currentUser = null;
+let invoiceItems = [];
+
+// ================== UTILITIES ==================
+function toCents(amount) { return Math.round(amount * 100); }
+function fromCents(cents) { return cents / 100; }
+function formatCurrency(amount) { return new Intl.NumberFormat('ar-DZ', { style: 'currency', currency: 'DZD' }).format(fromCents(amount)); }
+function escapeHtml(str) { if (!str) return ''; return String(str).replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m])); }
+function generateUUID() { return crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => (c === 'x' ? (Math.random() * 16 | 0) : (Math.random() * 4 | 8)).toString(16)); }
+
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div'); toast.className = 'alert-toast';
+    let icon = 'fa-info-circle'; if (type === 'success') icon = 'fa-check-circle'; if (type === 'error') icon = 'fa-exclamation-triangle';
+    toast.innerHTML = `<i class="fas ${icon}"></i> ${escapeHtml(message)}`; document.body.appendChild(toast); setTimeout(() => toast.remove(), 5000);
+}
+
+let loadingCount = 0;
+function showLoading() { loadingCount++; let ov = document.getElementById('loadingOverlay'); if(!ov) { ov = document.createElement('div'); ov.id = 'loadingOverlay'; ov.className = 'loading-overlay'; ov.innerHTML = '<div class="spinner-border text-light"></div>'; document.body.appendChild(ov); } ov.style.display = 'flex'; }
+function hideLoading() { loadingCount--; if(loadingCount <= 0) { const ov = document.getElementById('loadingOverlay'); if(ov) ov.style.display = 'none'; loadingCount = 0; } }
+
+// ================== FIRESTORE WRAPPERS ==================
+async function getStore(collectionName) {
+    if (!firebaseInitialized) return [];
+    try {
+        const snapshot = await db.collection(collectionName).where("userId", "in", [currentUser?.uid || "all", "shared"]).get();
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (e) { console.warn('getStore error:', e); return []; }
+}
+async function saveStore(collectionName, dataArray) {
+    if (!firebaseInitialized) return;
+    const batch = db.batch();
+    const existing = await db.collection(collectionName).where("userId", "==", currentUser.uid).get();
+    existing.forEach(doc => batch.delete(doc.ref));
+    dataArray.forEach(item => {
+        const ref = db.collection(collectionName).doc(item.id || generateUUID());
+        batch.set(ref, { ...item, userId: currentUser.uid, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+    });
+    await batch.commit();
+}
+
+// ================== INIT DEFAULT DATA ==================
+async function initDefaultData() {
+    if (!firebaseInitialized) return;
+    const settingsSnap = await db.collection('settings').where("userId", "==", currentUser.uid).get();
+    if (settingsSnap.empty) {
+        const defaultSettings = { id: 'settings', darkMode: false, invoiceCounter: 1, companyNameAr: 'Sofazi', companyNameFr: 'SOFAZI', legalForm: 'SARL', capital: '100,000 DA', companyNif: '123456789012345', companyNis: '123456789012345', companyRc: '21 B 1234567', companyArt: '123456789012345', companyPhone: '0550 12 34 56', companyEmail: 'contact@sofazi.dz', companyAddr: 'Alger, Algérie' };
+        await db.collection('settings').doc(defaultSettings.id).set({ ...defaultSettings, userId: currentUser.uid });
+    }
+    const catSnap = await db.collection('expense_categories').where("userId", "==", currentUser.uid).get();
+    if (catSnap.empty) {
+        const cats = [
+            { id: generateUUID(), name: 'إيجار', color: '#dc2626' },
+            { id: generateUUID(), name: 'كهرباء', color: '#f59e0b' },
+            { id: generateUUID(), name: 'رواتب', color: '#10b981' },
+            { id: generateUUID(), name: 'أدوات', color: '#3b82f6' },
+            { id: generateUUID(), name: 'ديون ورشة', color: '#8b5cf6' }
+        ];
+        const batch = db.batch();
+        cats.forEach(c => { const ref = db.collection('expense_categories').doc(c.id); batch.set(ref, { ...c, userId: currentUser.uid }); });
+        await batch.commit();
+    }
+}
+
+// ================== AUTHENTICATION (مع إمكانية التسجيل) ==================
+async function doLogin(email, password) {
+    showLoading();
+    try {
+        const cred = await auth.signInWithEmailAndPassword(email, password);
+        currentUser = cred.user;
+        const userDoc = await db.collection('users').doc(currentUser.uid).get();
+        let role = 'admin';
+        let fullName = currentUser.email.split('@')[0];
+        if (userDoc.exists) {
+            role = userDoc.data().role || 'admin';
+            fullName = userDoc.data().full_name || fullName;
+        } else {
+            await db.collection('users').doc(currentUser.uid).set({ id: currentUser.uid, email: currentUser.email, full_name: fullName, role: 'admin', is_active: true, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+        }
+        document.getElementById('userNameDisplay').innerText = fullName;
+        document.getElementById('userRoleDisplay').innerText = role === 'admin' ? 'مدير' : 'شريك';
+        document.body.classList.remove('login-active');
+        await initDefaultData();
+        updateTopBarCompanyName();
+        loadPage('dashboard');
+        showToast(`مرحباً ${fullName}`, 'success');
+    } catch(err) { showToast(err.message, 'error'); } finally { hideLoading(); }
+}
+
+async function doRegister(email, password, fullName) {
+    showLoading();
+    try {
+        const cred = await auth.createUserWithEmailAndPassword(email, password);
+        currentUser = cred.user;
+        await db.collection('users').doc(currentUser.uid).set({ id: currentUser.uid, email, full_name: fullName, role: 'admin', is_active: true, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+        document.getElementById('userNameDisplay').innerText = fullName;
+        document.getElementById('userRoleDisplay').innerText = 'مدير';
+        document.body.classList.remove('login-active');
+        await initDefaultData();
+        updateTopBarCompanyName();
+        loadPage('dashboard');
+        showToast(`تم إنشاء الحساب بنجاح، مرحباً ${fullName}`, 'success');
+    } catch(err) { showToast(err.message, 'error'); } finally { hideLoading(); }
+}
+
+async function logout() {
+    if (!confirm('هل أنت متأكد من تسجيل الخروج؟')) return;
+    await auth.signOut();
+    currentUser = null;
+    document.body.classList.add('login-active');
+    document.getElementById('sidebar').classList.remove('open');
+    showLogin();
+}
+
+async function restoreSession() {
+    return new Promise((resolve) => {
+        auth.onAuthStateChanged(async (user) => {
+            if (user) {
+                currentUser = user;
+                const userDoc = await db.collection('users').doc(user.uid).get();
+                const fullName = userDoc.exists ? userDoc.data().full_name : user.email.split('@')[0];
+                document.getElementById('userNameDisplay').innerText = fullName;
+                document.getElementById('userRoleDisplay').innerText = userDoc.exists && userDoc.data().role === 'admin' ? 'مدير' : 'شريك';
+                document.body.classList.remove('login-active');
+                updateTopBarCompanyName();
+                loadPage('dashboard');
+                resolve(true);
+            } else {
+                document.body.classList.add('login-active');
+                showLogin();
+                resolve(false);
+            }
+        });
+    });
+}
+
+function showLogin() {
+    document.getElementById('content').innerHTML = `
+        <div class="login-container">
+            <div class="card login-card">
+                <div class="card-body p-4">
+                    <div class="text-center mb-4">
+                        <i class="fas fa-industry fa-4x text-primary mb-3"></i>
+                        <h3 class="fw-bold">Sofazi</h3>
+                        <p class="text-muted">النظام المركزي للإدارة</p>
+                    </div>
+                    <ul class="nav nav-tabs mb-3" id="authTabs" role="tablist">
+                        <li class="nav-item w-50" role="presentation">
+                            <button class="nav-link active w-100" id="login-tab" data-bs-toggle="tab" data-bs-target="#login" type="button" role="tab">دخول</button>
+                        </li>
+                        <li class="nav-item w-50" role="presentation">
+                            <button class="nav-link w-100" id="register-tab" data-bs-toggle="tab" data-bs-target="#register" type="button" role="tab">حساب جديد</button>
+                        </li>
+                    </ul>
+                    <div class="tab-content">
+                        <div class="tab-pane fade show active" id="login" role="tabpanel">
+                            <div class="mb-3">
+                                <label class="form-label">البريد الإلكتروني</label>
+                                <input type="email" id="loginUser" class="form-control form-control-lg" placeholder="example@company.com">
+                            </div>
+                            <div class="mb-4">
+                                <label class="form-label">كلمة المرور</label>
+                                <input type="password" id="loginPass" class="form-control form-control-lg" placeholder="********">
+                            </div>
+                            <button class="btn btn-primary btn-lg w-100 py-2" id="loginBtn"><i class="fas fa-sign-in-alt me-2"></i> دخول</button>
+                            <p class="mt-3 small text-muted text-center">أول مستخدم: admin@example.com / admin123</p>
+                        </div>
+                        <div class="tab-pane fade" id="register" role="tabpanel">
+                            <div class="mb-3">
+                                <label class="form-label">الاسم الكامل</label>
+                                <input type="text" id="regFullName" class="form-control form-control-lg" placeholder="محمد أمين">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">البريد الإلكتروني</label>
+                                <input type="email" id="regEmail" class="form-control form-control-lg" placeholder="example@company.com">
+                            </div>
+                            <div class="mb-4">
+                                <label class="form-label">كلمة المرور</label>
+                                <input type="password" id="regPass" class="form-control form-control-lg" placeholder="********">
+                            </div>
+                            <button class="btn btn-success btn-lg w-100 py-2" id="registerBtn"><i class="fas fa-user-plus me-2"></i> إنشاء حساب</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    document.getElementById('loginBtn').addEventListener('click', () => {
+        const email = document.getElementById('loginUser').value;
+        const pass = document.getElementById('loginPass').value;
+        if (email && pass) doLogin(email, pass); else showToast('الرجاء إدخال البريد وكلمة المرور', 'error');
+    });
+    document.getElementById('registerBtn').addEventListener('click', () => {
+        const fullName = document.getElementById('regFullName').value.trim();
+        const email = document.getElementById('regEmail').value.trim();
+        const pass = document.getElementById('regPass').value;
+        if (!fullName || !email || !pass) { showToast('جميع الحقول مطلوبة', 'error'); return; }
+        if (pass.length < 6) { showToast('كلمة المرور يجب أن تكون 6 أحرف على الأقل', 'error'); return; }
+        doRegister(email, pass, fullName);
+    });
+    document.getElementById('loginPass')?.addEventListener('keypress', (e) => { if (e.key === 'Enter') document.getElementById('loginBtn').click(); });
+}
+
+// ================== UPDATE CUSTOMER TOTALS ==================
+async function updateCustomerTotals(customerId) {
+    const invoices = await getStore('invoices');
+    const customerInvoices = invoices.filter(inv => inv.customer_id === customerId);
+    const totalAmount = customerInvoices.reduce((sum, inv) => sum + inv.total_amount, 0);
+    const paidAmount = customerInvoices.reduce((sum, inv) => sum + inv.paid_amount, 0);
+    const customers = await getStore('customers');
+    const custIndex = customers.findIndex(c => c.id == customerId);
+    if (custIndex !== -1) {
+        customers[custIndex].total_amount = totalAmount;
+        customers[custIndex].paid_amount = paidAmount;
+        customers[custIndex].updated_at = new Date().toISOString();
+        await saveStore('customers', customers);
+    }
+}
+
+// ================== CUSTOMERS (كامل) ==================
+async function renderCustomers(page = 1, limit = 10) {
+    showLoading();
+    try {
+        let customers = await getStore('customers');
+        if (currentUser.role !== 'admin') customers = customers.filter(c => c.created_by === currentUser.uid);
+        const total = customers.length, totalPages = Math.ceil(total/limit);
+        const paginated = customers.slice((page-1)*limit, page*limit);
+        document.getElementById('content').innerHTML = `
+            <div class="d-flex justify-content-between align-items-center mb-4"><h4><i class="fas fa-users"></i> الزبائن</h4><button class="btn btn-primary" onclick="window.showCustomerModal()"><i class="fas fa-plus"></i> زبون جديد</button></div>
+            <div class="search-box"><i class="fas fa-search"></i><input type="text" id="searchCustomer" class="form-control" placeholder="ابحث بالاسم أو الهاتف..."></div>
+            <div class="row" id="customersList">${paginated.map(c => `
+                <div class="col-md-4 mb-3"><div class="card h-100"><div class="card-body"><h5>${escapeHtml(c.name)}</h5>
+                <p><i class="fas fa-phone"></i> ${escapeHtml(c.phone||'-')}<br><i class="fas fa-map-marker-alt"></i> ${escapeHtml(c.wilaya||'')} ${escapeHtml(c.address||'')}<br>
+                <strong>المبلغ الكلي:</strong> ${formatCurrency(c.total_amount)}<br><strong>المدفوع:</strong> ${formatCurrency(c.paid_amount)}<br>
+                <strong class="text-danger">المتبقي:</strong> ${formatCurrency(c.total_amount - c.paid_amount)}</p>
+                <button class="btn btn-sm btn-primary" onclick="window.viewCustomer('${c.id}')">عرض</button>
+                <button class="btn btn-sm btn-info" onclick="window.showCustomerPayments('${c.id}')">الدفعات</button>
+                ${(currentUser.role === 'admin' || c.created_by === currentUser.uid) ? `<button class="btn btn-sm btn-warning" onclick="window.showCustomerModal('${c.id}')">تعديل</button>` : ''}
+                </div></div></div>`).join('')}</div>
+            <div class="pagination">${Array.from({length:totalPages},(_,i)=>`<button class="btn btn-sm btn-outline-primary" onclick="window.renderCustomers(${i+1},${limit})">${i+1}</button>`).join('')}</div>
+        `;
+        document.getElementById('searchCustomer')?.addEventListener('input', e => { const term = e.target.value.toLowerCase(); document.querySelectorAll('#customersList .col-md-4').forEach(card => { card.style.display = card.innerText.toLowerCase().includes(term) ? '' : 'none'; }); });
+    } catch(e) { showToast('فشل تحميل الزبائن','error'); } finally { hideLoading(); }
+}
+
+async function showCustomerModal(id=null) {
+    let cust = id ? (await getStore('customers')).find(c => c.id == id) : null;
+    const wilayas = ['أدرار','الشلف','الأغواط','أم البواقي','باتنة','بجاية','بسكرة','بشار','البليدة','البويرة','تمنراست','تبسة','تلمسان','تيارت','تيزي وزو','الجزائر','الجلفة','جيجل','سطيف','سعيدة','سكيكدة','سيدي بلعباس','عنابة','قالمة','قسنطينة','المدية','ميلة','معسكر','مستغانم','المسيلة'];
+    const modalHtml = `<div class="modal fade" id="customerModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header"><h5>${cust?'تعديل زبون':'إضافة زبون'}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="row"><div class="col-md-6"><input type="text" id="custName" class="form-control mb-2" placeholder="الاسم *" value="${cust?escapeHtml(cust.name):''}"><input type="tel" id="custPhone" class="form-control mb-2" placeholder="رقم الهاتف" value="${cust?escapeHtml(cust.phone):''}"><select id="custWilaya" class="form-control mb-2"><option value="">اختر الولاية</option>${wilayas.map(w=>`<option value="${w}" ${cust?.wilaya===w?'selected':''}>${w}</option>`).join('')}</select><input type="text" id="custAddress" class="form-control mb-2" placeholder="العنوان" value="${cust?escapeHtml(cust.address):''}"></div><div class="col-md-6"><input type="number" id="custTotalAmount" class="form-control mb-2" placeholder="المبلغ الكلي (دج)" value="${cust?fromCents(cust.total_amount):''}"><input type="number" id="custPaidAmount" class="form-control mb-2" placeholder="المدفوع (دج)" value="${cust?fromCents(cust.paid_amount):''}"><input type="date" id="custPaymentDate" class="form-control mb-2" value="${cust?.payment_date||''}"><input type="date" id="custStartDate" class="form-control mb-2" value="${cust?.start_date||''}"><textarea id="custNotes" class="form-control mb-2" placeholder="الملاحظات" rows="2">${cust?escapeHtml(cust.notes):''}</textarea></div></div></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button><button class="btn btn-primary" onclick="window.saveCustomer('${id||0}')">حفظ</button></div></div></div></div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const modal = new bootstrap.Modal(document.getElementById('customerModal')); modal.show();
+    document.getElementById('customerModal').addEventListener('hidden.bs.modal', () => document.getElementById('customerModal')?.remove());
+}
+
+async function saveCustomer(id) {
+    const name = document.getElementById('custName').value.trim(); if(!name) { showToast('الاسم مطلوب','error'); return; }
+    const totalAmount = parseFloat(document.getElementById('custTotalAmount').value); const paidAmount = parseFloat(document.getElementById('custPaidAmount').value);
+    if (isNaN(totalAmount) || totalAmount < 0 || isNaN(paidAmount) || paidAmount < 0) { showToast('المبالغ غير صحيحة','error'); return; }
+    showLoading();
+    try {
+        let customers = await getStore('customers');
+        if(id !== '0') {
+            const index = customers.findIndex(c => c.id == id); if(index === -1) throw new Error('الزبون غير موجود');
+            if(currentUser.role !== 'admin' && customers[index].created_by !== currentUser.uid) throw new Error('غير مصرح');
+            customers[index] = { ...customers[index], name, phone: document.getElementById('custPhone').value, wilaya: document.getElementById('custWilaya').value, address: document.getElementById('custAddress').value, total_amount: toCents(totalAmount), paid_amount: toCents(paidAmount), payment_date: document.getElementById('custPaymentDate').value, start_date: document.getElementById('custStartDate').value, notes: document.getElementById('custNotes').value, updated_at: new Date().toISOString() };
+            await saveStore('customers', customers); showToast('تم تعديل الزبون','success');
+        } else {
+            const newCust = { id: generateUUID(), code: 'CUST-'+Date.now(), name, phone: document.getElementById('custPhone').value, wilaya: document.getElementById('custWilaya').value, address: document.getElementById('custAddress').value, total_amount: toCents(totalAmount), paid_amount: toCents(paidAmount), payment_date: document.getElementById('custPaymentDate').value, start_date: document.getElementById('custStartDate').value, notes: document.getElementById('custNotes').value, total_debt: 0, is_active: true, created_by: currentUser.uid, created_by_name: currentUser.email, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+            customers.push(newCust); await saveStore('customers', customers); showToast('تم إضافة الزبون','success');
+        }
+        bootstrap.Modal.getInstance(document.getElementById('customerModal')).hide(); renderCustomers();
+    } catch(e) { showToast(e.message,'error'); } finally { hideLoading(); }
+}
+
+async function viewCustomer(id) {
+    showLoading();
+    try {
+        const customers = await getStore('customers'); const cust = customers.find(c => c.id == id); if(!cust) throw new Error('الزبون غير موجود');
+        if (currentUser.role !== 'admin' && cust.created_by !== currentUser.uid) throw new Error('غير مصرح');
+        let invoices = (await getStore('invoices')).filter(i => i.customer_id == id); if(currentUser.role !== 'admin') invoices = invoices.filter(i => i.created_by === currentUser.uid);
+        const remainingContract = cust.total_amount - cust.paid_amount;
+        document.getElementById('content').innerHTML = `<button class="btn btn-secondary mb-3" onclick="window.renderCustomers()"><i class="fas fa-arrow-right"></i> رجوع</button><div class="card"><div class="card-header"><h5>${escapeHtml(cust.name)}</h5></div><div class="card-body"><div class="row"><div class="col-md-6"><p><strong>الهاتف:</strong> ${escapeHtml(cust.phone||'-')}</p><p><strong>الولاية:</strong> ${escapeHtml(cust.wilaya||'-')}</p><p><strong>العنوان:</strong> ${escapeHtml(cust.address||'-')}</p><p><strong>المبلغ الكلي:</strong> ${formatCurrency(cust.total_amount)}</p><p><strong>المدفوع:</strong> ${formatCurrency(cust.paid_amount)}</p><p><strong>المتبقي (عقد):</strong> <span class="text-danger">${formatCurrency(remainingContract)}</span></p></div><div class="col-md-6"><p><strong>تاريخ الدفع:</strong> ${escapeHtml(cust.payment_date||'-')}</p><p><strong>تاريخ البداية:</strong> ${escapeHtml(cust.start_date||'-')}</p><p><strong>الملاحظات:</strong> ${escapeHtml(cust.notes||'-')}</p></div></div><button class="btn btn-success" onclick="window.addCustomerPayment('${id}')"><i class="fas fa-money-bill"></i> إضافة دفعة</button><button class="btn btn-info" onclick="window.showCustomerPayments('${id}')">عرض الدفعات</button></div></div><div class="card mt-3"><div class="card-header"><h6>فواتير الزبون</h6></div><div class="card-body"><div class="table-responsive"><table class="table"><thead><tr><th>رقم الفاتورة</th><th>التاريخ</th><th>الإجمالي</th><th>المتبقي</th><th></th></tr></thead><tbody>${invoices.map(inv=>`<tr><td>${escapeHtml(inv.invoice_number)}</td><td>${escapeHtml(inv.invoice_date)}</td><td>${formatCurrency(inv.total_amount)}</td><td class="text-danger">${formatCurrency(inv.remaining_amount)}</td><td><button class="btn btn-sm btn-outline-primary" onclick="window.editInvoice('${inv.id}')"><i class="fas fa-edit"></i></button> <button class="btn btn-sm btn-outline-danger" onclick="window.deleteInvoice('${inv.id}')"><i class="fas fa-trash"></i></button></td></tr>`).join('')}</tbody></table></div></div></div>`;
+    } catch(e) { showToast(e.message,'error'); } finally { hideLoading(); }
+}
+
+async function showCustomerPayments(customerId) {
+    const customers = await getStore('customers'); const cust = customers.find(c => c.id == customerId); if (!cust) return;
+    const payments = await getStore('invoice_payments'); let invoices = (await getStore('invoices')).filter(i => i.customer_id == customerId);
+    if(currentUser.role !== 'admin') invoices = invoices.filter(i => i.created_by === currentUser.uid);
+    const custPayments = payments.filter(p => invoices.some(inv => inv.id == p.invoice_id)).sort((a,b)=>new Date(b.payment_date)-new Date(a.payment_date));
+    const modalHtml = `<div class="modal fade" id="paymentsModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header bg-primary text-white"><h5><i class="fas fa-history"></i> دفعات ${escapeHtml(cust.name)}</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body"><button class="btn btn-sm btn-success mb-3" onclick="window.addCustomerPayment('${customerId}')"><i class="fas fa-plus"></i> إضافة دفعة جديدة</button><div class="table-responsive"><table class="table table-sm"><thead><tr><th>التاريخ</th><th>رقم الفاتورة</th><th>المبلغ</th><th>ملاحظات</th><th>بواسطة</th><th></th></tr></thead><tbody>${custPayments.map(p=>{ const inv = invoices.find(i=>i.id==p.invoice_id); return `<tr><td>${escapeHtml(p.payment_date)}</td><td>${inv?escapeHtml(inv.invoice_number):'-'}</td><td class="text-success">${formatCurrency(p.amount)}</td><td>${escapeHtml(p.notes||'-')}</td><td>${escapeHtml(p.received_by_name||'')}</td><td><button class="btn btn-sm btn-outline-danger" onclick="window.deletePayment('${p.id}','${customerId}')"><i class="fas fa-trash"></i></button></td></tr>`; }).join('')}</tbody></table></div>${custPayments.length===0?'<p class="text-muted text-center">لا توجد دفعات مسجلة</p>':''}</div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button></div></div></div></div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHtml); const modal = new bootstrap.Modal(document.getElementById('paymentsModal')); modal.show();
+    document.getElementById('paymentsModal').addEventListener('hidden.bs.modal', () => document.getElementById('paymentsModal')?.remove());
+}
+
+async function addCustomerPayment(customerId) {
+    const customers = await getStore('customers'); const cust = customers.find(c => c.id == customerId); if(!cust) return;
+    let invoices = (await getStore('invoices')).filter(inv => inv.customer_id == customerId && inv.remaining_amount > 0);
+    if(currentUser.role !== 'admin') invoices = invoices.filter(i => i.created_by === currentUser.uid);
+    let unpaidInvoice = invoices[0];
+    if(!unpaidInvoice) {
+        const remainingContract = cust.total_amount - cust.paid_amount;
+        if(remainingContract <= 0) { showToast('لا يوجد مبلغ متبقي','error'); return; }
+        let settings = (await getStore('settings')); const nextNum = settings[0]?.invoiceCounter || 1;
+        settings[0].invoiceCounter = nextNum + 1; await saveStore('settings', settings);
+        const invoiceNumber = `INV-${new Date().getFullYear()}-${nextNum}`;
+        const newInvoice = { id: generateUUID(), invoice_number: invoiceNumber, customer_id: cust.id, invoice_date: new Date().toISOString().slice(0,10), due_date: new Date(Date.now()+30*86400000).toISOString().slice(0,10), total_amount: remainingContract, paid_amount: 0, remaining_amount: remainingContract, discount: 0, tax_rate: 0, status: 'unpaid', notes: 'فاتورة تلقائية', invoice_type: 'officielle', created_by: currentUser.uid, created_by_name: currentUser.email, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+        let invoicesArr = await getStore('invoices'); invoicesArr.push(newInvoice); await saveStore('invoices', invoicesArr);
+        let itemsArr = await getStore('invoice_items'); itemsArr.push({ id: generateUUID(), invoice_id: newInvoice.id, description: `تسديد دفعة`, quantity: 1, price: remainingContract, total: remainingContract }); await saveStore('invoice_items', itemsArr);
+        unpaidInvoice = newInvoice; showToast('تم إنشاء فاتورة تلقائية','success');
+    }
+    const modalHtml = `<div class="modal fade" id="addPaymentModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5>إضافة دفعة</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-2"><strong>الفاتورة:</strong> ${escapeHtml(unpaidInvoice.invoice_number)}</div><div class="mb-2"><strong>المتبقي:</strong> ${formatCurrency(unpaidInvoice.remaining_amount)}</div><input type="number" id="paymentAmount" class="form-control mb-2" placeholder="المبلغ" max="${fromCents(unpaidInvoice.remaining_amount)}" step="1000"><input type="date" id="paymentDate" class="form-control mb-2" value="${new Date().toISOString().slice(0,10)}"><textarea id="paymentNotes" class="form-control" placeholder="ملاحظات"></textarea></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button><button class="btn btn-primary" onclick="window.saveCustomerPayment('${customerId}','${unpaidInvoice.id}')">حفظ</button></div></div></div></div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHtml); const modal = new bootstrap.Modal(document.getElementById('addPaymentModal')); modal.show();
+    document.getElementById('addPaymentModal').addEventListener('hidden.bs.modal', () => document.getElementById('addPaymentModal')?.remove());
+}
+
+async function saveCustomerPayment(customerId, invoiceId) {
+    const amountVal = parseFloat(document.getElementById('paymentAmount').value); if(isNaN(amountVal) || amountVal <= 0) { showToast('المبلغ غير صحيح','error'); return; }
+    const amountCents = toCents(amountVal); showLoading();
+    try {
+        let invoices = await getStore('invoices'); const invIndex = invoices.findIndex(i => i.id == invoiceId); if(invIndex === -1) throw new Error('الفاتورة غير موجودة'); const invoice = invoices[invIndex];
+        if (amountCents > invoice.remaining_amount) throw new Error(`المبلغ أكبر من المتبقي (${formatCurrency(invoice.remaining_amount)})`);
+        invoice.paid_amount += amountCents; invoice.remaining_amount = invoice.total_amount - invoice.paid_amount;
+        invoice.status = invoice.paid_amount === 0 ? 'unpaid' : (invoice.paid_amount >= invoice.total_amount ? 'paid' : 'partial'); invoice.updated_at = new Date().toISOString(); invoices[invIndex] = invoice; await saveStore('invoices', invoices);
+        let payments = await getStore('invoice_payments');
+        payments.push({ id: generateUUID(), invoice_id: invoiceId, amount: amountCents, payment_date: document.getElementById('paymentDate').value, notes: document.getElementById('paymentNotes').value, received_by: currentUser.uid, received_by_name: currentUser.email });
+        await saveStore('invoice_payments', payments); await updateCustomerTotals(customerId);
+        bootstrap.Modal.getInstance(document.getElementById('addPaymentModal')).hide(); showToast('✅ تم إضافة الدفعة','success');
+        document.getElementById('paymentsModal')?.remove(); showCustomerPayments(customerId);
+    } catch(e) { showToast(e.message,'error'); } finally { hideLoading(); }
+}
+
+async function deletePayment(paymentId, customerId) {
+    if(!confirm('هل أنت متأكد؟')) return; showLoading();
+    try {
+        let payments = await getStore('invoice_payments'); const payment = payments.find(p => p.id == paymentId); if(!payment) throw new Error('الدفعة غير موجودة');
+        payments = payments.filter(p => p.id != paymentId); await saveStore('invoice_payments', payments);
+        let invoices = await getStore('invoices'); const invIndex = invoices.findIndex(i => i.id == payment.invoice_id);
+        if(invIndex !== -1) { invoices[invIndex].paid_amount -= payment.amount; invoices[invIndex].remaining_amount = invoices[invIndex].total_amount - invoices[invIndex].paid_amount; invoices[invIndex].status = invoices[invIndex].paid_amount === 0 ? 'unpaid' : (invoices[invIndex].paid_amount >= invoices[invIndex].total_amount ? 'paid' : 'partial'); invoices[invIndex].updated_at = new Date().toISOString(); await saveStore('invoices', invoices); await updateCustomerTotals(customerId); }
+        showToast('🗑️ تم حذف الدفعة','success'); document.getElementById('paymentsModal')?.remove(); showCustomerPayments(customerId);
+    } catch(e) { showToast(e.message,'error'); } finally { hideLoading(); }
+}
+
+// ================== INVOICES (كامل) ==================
+const translations = {
+    ar: { client: "الزبون", name: "الاسم", paymentInfo: "معلومات الدفع", paymentMethod: "طريقة الدفع", subtotal: "المجموع الفرعي", vat: "الضريبة على القيمة المضافة", totalDue: "الإجمالي المستحق", companyStamp: "ختم المؤسسة وتوقيع الممثل القانوني", clientSignature: "توقيع الزبون", footerNote: "تخضع هذه الفاتورة للقوانين الجبائية الجزائرية", proformaNote: "فاتورة شكلية - غير خاضعة للتحصيل الضريبي", officialInvoice: "فاتورة رسمية", proformaInvoice: "فاتورة شكلية - Proforma", number: "رقم", date: "التاريخ", dueDate: "استحقاق", product: "المنتج / الخدمة", quantity: "الكمية", unitPrice: "سعر الوحدة (دج)", amount: "المبلغ (دج)", reference: "مرجع الفاتورة", contact: "للتواصل", capital: "رأس المال", legalForm: "الصيغة القانونية" },
+    fr: { client: "Client", name: "Nom", paymentInfo: "Informations de paiement", paymentMethod: "Mode de paiement", subtotal: "Sous-total", vat: "TVA", totalDue: "Total à payer", companyStamp: "Cachet de l'entreprise et signature du représentant légal", clientSignature: "Signature du client", footerNote: "Cette facture est soumise à la législation fiscale algérienne", proformaNote: "Facture proforma - non soumise à encaissement", officialInvoice: "Facture officielle", proformaInvoice: "Facture proforma", number: "N°", date: "Date", dueDate: "Échéance", product: "Produit / Service", quantity: "Quantité", unitPrice: "Prix unitaire (DA)", amount: "Montant (DA)", reference: "Référence facture", contact: "Contact", capital: "Capital", legalForm: "Forme juridique" },
+    en: { client: "Client", name: "Name", paymentInfo: "Payment Information", paymentMethod: "Payment Method", subtotal: "Subtotal", vat: "VAT", totalDue: "Total Due", companyStamp: "Company Stamp & Legal Representative Signature", clientSignature: "Client Signature", footerNote: "This invoice is subject to Algerian tax legislation", proformaNote: "Proforma invoice - not subject to collection", officialInvoice: "Official Invoice", proformaInvoice: "Proforma Invoice", number: "No.", date: "Date", dueDate: "Due Date", product: "Product / Service", quantity: "Quantity", unitPrice: "Unit Price (DA)", amount: "Amount (DA)", reference: "Invoice Reference", contact: "Contact", capital: "Capital", legalForm: "Legal Form" }
+};
+function getLocalizedText(text, lang){
+    if(!text) return '';
+    if(lang==='ar') return text.split('/')[0].trim();
+    if(lang==='fr') return text.split('/')[1]?.trim()||text;
+    return text.split('/')[2]?.trim()||text.split('/')[1]?.trim()||text;
+}
+
+async function renderInvoices(editingId=null) {
+    let settingsArr = await getStore('settings');
+    const settings = settingsArr[0] || {};
+    if(!editingId) invoiceItems = [{ name: 'خدمة نموذجية', quantity: 1, price: 0 }];
+    else {
+        const inv = (await getStore('invoices')).find(i=>i.id==editingId);
+        if(!inv) { showToast('الفاتورة غير موجودة','error'); return; }
+        if (currentUser.role !== 'admin' && inv.created_by !== currentUser.uid) { showToast('غير مصرح لك بتعديل هذه الفاتورة','error'); return; }
+        const items = await getStore('invoice_items');
+        invoiceItems = items.filter(it=>it.invoice_id==editingId).map(it=>({ name: it.description, quantity: it.quantity, price: fromCents(it.price) }));
+        if(invoiceItems.length===0) invoiceItems = [{ name: 'خدمة نموذجية', quantity: 1, price: 0 }];
+        setTimeout(()=>{
+            document.getElementById('invoiceNumber').value = inv.invoice_number;
+            document.getElementById('invoiceDate').value = inv.invoice_date;
+            document.getElementById('dueDate').value = inv.due_date;
+            document.getElementById('taxRate').value = fromCents(inv.tax_rate);
+            document.getElementById('invoiceType').value = inv.invoice_type;
+            document.getElementById('notes').value = inv.notes||'';
+            (async () => {
+                const customers = await getStore('customers');
+                const cust = customers.find(c=>c.id==inv.customer_id);
+                if(cust){ document.getElementById('clientName').value = cust.name; document.getElementById('clientNif').value = cust.nif||''; document.getElementById('clientNis').value = cust.nis||''; document.getElementById('clientPhone').value = cust.phone||''; }
+            })();
+            renderInvoiceItemsInput(); renderInvoicePreview();
+        },100);
+    }
+    let customers = await getStore('customers');
+    if(currentUser.role !== 'admin') customers = customers.filter(c=>c.created_by===currentUser.uid);
+    const html = `<div class="d-flex justify-content-between align-items-center mb-4"><h4><i class="fas fa-file-invoice"></i> ${editingId?'تعديل فاتورة':'إنشاء فاتورة جديدة'}</h4><button class="btn btn-secondary" onclick="window.renderInvoicesList()"><i class="fas fa-list"></i> قائمة الفواتير</button></div><div class="invoice-layout"><div class="invoice-input-panel no-print"><div class="row"><div class="col-md-6"><div class="control-group"><label><i class="fas fa-language"></i> لغة الفاتورة</label><select id="invoiceLanguage" class="form-control"><option value="ar">العربية</option><option value="fr">Français</option><option value="en">English</option></select></div><div class="control-group"><div class="form-check"><input type="checkbox" id="showQuantityColumn" class="form-check-input" checked> <label class="form-check-label">إظهار عمود الكمية</label></div></div><div class="control-group"><label><i class="fas fa-building"></i> اسم المؤسسة (عربي)</label><input type="text" id="companyNameAr" class="form-control" value="${escapeHtml(settings.companyNameAr||'سوفازي اندستري')}"></div><div class="control-group"><label><i class="fas fa-trademark"></i> الاسم التجاري (فرنسي)</label><input type="text" id="companyNameFr" class="form-control" value="${escapeHtml(settings.companyNameFr||'SOUAZI INDUSTRY')}"></div><div class="control-group"><label><i class="fas fa-gavel"></i> الصيغة القانونية</label><input type="text" id="legalForm" class="form-control" value="${escapeHtml(settings.legalForm||'SARL')}"></div><div class="control-group"><label><i class="fas fa-coins"></i> رأس المال</label><input type="text" id="capital" class="form-control" value="${escapeHtml(settings.capital||'')}"></div><div class="control-group"><label><i class="fas fa-id-card"></i> NIF</label><input type="text" id="companyNif" class="form-control" value="${escapeHtml(settings.companyNif||'123456789012345')}"></div><div class="control-group"><label><i class="fas fa-chart-line"></i> NIS</label><input type="text" id="companyNis" class="form-control" value="${escapeHtml(settings.companyNis||'123456789012345')}"></div><div class="control-group"><label><i class="fas fa-registered"></i> RC</label><input type="text" id="companyRc" class="form-control" value="${escapeHtml(settings.companyRc||'21 B 1234567')}"></div><div class="control-group"><label><i class="fas fa-briefcase"></i> ART</label><input type="text" id="companyArt" class="form-control" value="${escapeHtml(settings.companyArt||'123456789012345')}"></div><div class="control-group"><label><i class="fas fa-phone-alt"></i> الهاتف</label><input type="text" id="companyPhone" class="form-control" value="${escapeHtml(settings.companyPhone||'0550 12 34 56')}"></div><div class="control-group"><label><i class="fas fa-envelope"></i> البريد الإلكتروني</label><input type="text" id="companyEmail" class="form-control" value="${escapeHtml(settings.companyEmail||'contact@souazi.dz')}"></div><div class="control-group"><label><i class="fas fa-map-marker-alt"></i> العنوان</label><textarea id="companyAddr" class="form-control">${escapeHtml(settings.companyAddr||'20, Rue des Frères Bouadou, Alger, Algérie')}</textarea></div></div><div class="col-md-6"><div class="control-group"><label><i class="fas fa-tag"></i> نوع الفاتورة</label><select id="invoiceType" class="form-control"><option value="officielle">فاتورة رسمية</option><option value="proforma">فاتورة شكلية (Proforma)</option></select></div><div class="control-group"><label><i class="fas fa-hashtag"></i> رقم الفاتورة</label><input type="text" id="invoiceNumber" class="form-control" value="${editingId? (await getStore('invoices')).find(i=>i.id==editingId)?.invoice_number : ''}" ${editingId?'readonly':''}></div><div class="control-group"><label><i class="fas fa-calendar"></i> تاريخ الإصدار</label><input type="date" id="invoiceDate" class="form-control" value="${new Date().toISOString().slice(0,10)}"></div><div class="control-group"><label><i class="fas fa-hourglass-half"></i> تاريخ الاستحقاق</label><input type="date" id="dueDate" class="form-control" value="${new Date(Date.now()+30*86400000).toISOString().slice(0,10)}"></div><div class="control-group"><label><i class="fas fa-user"></i> اسم الزبون</label><input type="text" id="clientName" class="form-control" list="customersList" placeholder="اختر أو اكتب اسم الزبون"><datalist id="customersList">${customers.map(c=>`<option value="${escapeHtml(c.name)}">`).join('')}</datalist></div><div class="control-group"><label>NIF الزبون</label><input type="text" id="clientNif" class="form-control"></div><div class="control-group"><label>NIS الزبون</label><input type="text" id="clientNis" class="form-control"></div><div class="control-group"><label><i class="fas fa-phone"></i> هاتف الزبون</label><input type="text" id="clientPhone" class="form-control"></div><div class="control-group"><label><i class="fas fa-percent"></i> TVA (%)</label><input type="number" id="taxRate" class="form-control" value="19"></div><div class="control-group"><label><i class="fas fa-money-bill-wave"></i> طريقة الدفع</label><input type="text" id="paymentMethod" class="form-control" value="تحويل بنكي / Virement bancaire / Bank transfer"></div><div class="control-group"><label><i class="fas fa-university"></i> IBAN</label><input type="text" id="iban" class="form-control" value="DZ 123 456 789 01 02 123456789"></div><div class="control-group"><label><i class="fas fa-sticky-note"></i> ملاحظات</label><textarea id="notes" class="form-control" rows="2">شكراً لثقتكم، الدفع خلال 30 يوماً من تاريخ الفاتورة / Merci de votre confiance, paiement sous 30 jours / Thank you for your trust, payment within 30 days</textarea></div></div></div><hr><label><i class="fas fa-list"></i> المنتجات / الخدمات</label><div id="invoiceItemsContainer"></div><button type="button" id="addItemBtnInvoice" class="add-item-btn"><i class="fas fa-plus-circle"></i> إضافة بند</button><div class="btn-group"><button class="btn btn-primary" id="updatePreviewBtn"><i class="fas fa-sync-alt"></i> تحديث المعاينة</button><button class="btn btn-success" id="saveInvoiceBtn"><i class="fas fa-save"></i> حفظ الفاتورة</button><button class="btn btn-danger" id="printInvoiceBtn"><i class="fas fa-print"></i> طباعة / PDF</button></div></div><div class="invoice-preview-panel"><div id="invoicePreviewContent" class="algerian-invoice"></div></div></div>`;
+    document.getElementById('content').innerHTML = html;
+    renderInvoiceItemsInput();
+    const fields = ['invoiceLanguage','showQuantityColumn','companyNameAr','companyNameFr','legalForm','capital','companyNif','companyNis','companyRc','companyArt','companyPhone','companyEmail','companyAddr','invoiceType','invoiceNumber','invoiceDate','dueDate','clientName','clientNif','clientNis','clientPhone','taxRate','paymentMethod','iban','notes'];
+    fields.forEach(id=>{ const el = document.getElementById(id); if(el) { el.removeEventListener('input',renderInvoicePreview); el.addEventListener('input',renderInvoicePreview); } });
+    document.getElementById('updatePreviewBtn')?.addEventListener('click',renderInvoicePreview);
+    document.getElementById('saveInvoiceBtn')?.addEventListener('click',()=>saveInvoiceToDB(editingId));
+    document.getElementById('printInvoiceBtn')?.addEventListener('click',()=>{ const el = document.getElementById('invoicePreviewContent'); html2pdf().from(el).set({margin:0.5, filename:`invoice_${document.getElementById('invoiceNumber')?.value||'invoice'}.pdf`, image:{type:'jpeg',quality:0.98}, html2canvas:{scale:2}, jsPDF:{unit:'in',format:'a4',orientation:'portrait'}}).save(); });
+    document.getElementById('addItemBtnInvoice')?.addEventListener('click',()=>{ invoiceItems.push({name:'خدمة جديدة',quantity:1,price:0}); renderInvoiceItemsInput(); renderInvoicePreview(); });
+    renderInvoicePreview();
+}
+
+function renderInvoiceItemsInput() {
+    const container = document.getElementById('invoiceItemsContainer'); if(!container) return;
+    container.innerHTML = '';
+    invoiceItems.forEach((item,idx)=>{
+        const row = document.createElement('div'); row.className = 'item-row';
+        row.innerHTML = `<input type="text" class="item-name" value="${escapeHtml(item.name)}" data-idx="${idx}" data-field="name" placeholder="الوصف"><input type="number" class="item-qty" value="${item.quantity}" data-idx="${idx}" data-field="quantity" step="1" min="1"><input type="number" class="item-price" value="${item.price}" data-idx="${idx}" data-field="price" step="1000"><button class="remove-item" data-idx="${idx}"><i class="fas fa-trash-alt"></i></button>`;
+        container.appendChild(row);
+    });
+    document.querySelectorAll('.item-name, .item-qty, .item-price').forEach(inp=>{ inp.removeEventListener('change',handleItemChange); inp.addEventListener('change',handleItemChange); });
+    document.querySelectorAll('.remove-item').forEach(btn=>{ btn.removeEventListener('click',handleRemoveItem); btn.addEventListener('click',handleRemoveItem); });
+}
+
+function handleItemChange(e){
+    const idx = parseInt(e.target.dataset.idx,10), field = e.target.dataset.field;
+    if(field==='quantity') invoiceItems[idx].quantity = parseFloat(e.target.value)||1;
+    else if(field==='price') invoiceItems[idx].price = parseFloat(e.target.value)||0;
+    else invoiceItems[idx].name = e.target.value;
+    renderInvoicePreview();
+}
+function handleRemoveItem(e){
+    const idx = parseInt(e.currentTarget.dataset.idx,10);
+    if(invoiceItems.length>1){ invoiceItems.splice(idx,1); renderInvoiceItemsInput(); renderInvoicePreview(); }
+    else showToast("يجب أن يبقى بند واحد على الأقل","error");
+}
+
+function computeTotals(items, taxRatePercent){
+    const sub = items.reduce((s,it)=>s+(it.quantity*it.price),0);
+    const tax = sub * (taxRatePercent/100);
+    return { subTotal: sub, taxAmount: tax, total: sub+tax };
+}
+
+function renderInvoicePreview(){
+    const data = getInvoiceFormData();
+    const t = translations[data.language];
+    const { subTotal, taxAmount, total } = computeTotals(invoiceItems, data.taxRate);
+    const dateFormatted = data.invoiceDate ? new Date(data.invoiceDate).toLocaleDateString(data.language==='ar'?'ar-DZ':data.language==='fr'?'fr-FR':'en-US') : '----';
+    const dueFormatted = data.dueDate ? new Date(data.dueDate).toLocaleDateString(data.language==='ar'?'ar-DZ':data.language==='fr'?'fr-FR':'en-US') : '----';
+    const capitalHtml = data.capital ? `<span class="legal-status">${t.capital}: ${escapeHtml(data.capital)}</span>` : '';
+    const legalFormHtml = data.legalForm ? `<span class="legal-status">${t.legalForm}: ${escapeHtml(data.legalForm)}</span>` : '';
+    let clientExtra = '';
+    if(data.clientNif) clientExtra += `<div><span class="client-label">NIF:</span> ${escapeHtml(data.clientNif)}</div>`;
+    if(data.clientNis) clientExtra += `<div><span class="client-label">NIS:</span> ${escapeHtml(data.clientNis)}</div>`;
+    if(data.clientPhone) clientExtra += `<div><span class="client-label">📞 ${t.contact}:</span> ${escapeHtml(data.clientPhone)}</div>`;
+    let itemsHtml = `<div class="table-responsive"><table class="items-table"><thead><tr><th>#</th><th>${t.product}</th>`;
+    if(data.showQuantity) itemsHtml += `<th>${t.quantity}</th>`;
+    itemsHtml += `<th>${t.unitPrice}</th><th>${t.amount}</th></tr></thead><tbody>`;
+    invoiceItems.forEach((it,idx)=>{
+        const line = it.quantity * it.price;
+        itemsHtml += `<tr><td>${idx+1}</td><td style="text-align:right;">${escapeHtml(it.name)}</td>`;
+        if(data.showQuantity) itemsHtml += `<td>${it.quantity}</td>`;
+        itemsHtml += `<td>${formatCurrency(toCents(it.price))}</td><td>${formatCurrency(toCents(line))}</td></tr>`;
+    });
+    itemsHtml += `</tbody></table></div>`;
+    const isOfficial = data.invoiceType === 'officielle';
+    const invoiceTypeText = isOfficial ? t.officialInvoice : t.proformaInvoice;
+    let taxDisplay = '';
+    let totalToShow = total;
+    if(!isOfficial) { taxDisplay = `<div class="totals-line"><strong>${t.proformaNote}</strong></div>`; totalToShow = subTotal; }
+    else { taxDisplay = `<div class="totals-line"><strong>${t.vat} (${data.taxRate}%) :</strong> ${formatCurrency(toCents(taxAmount))}</div>`; }
+    const localizedPayment = getLocalizedText(data.paymentMethod, data.language);
+    const localizedNotes = getLocalizedText(data.notes, data.language);
+    let paymentHtml = '';
+    if(localizedPayment || data.iban) {
+        paymentHtml = `<div class="payment-section"><div class="payment-title"><i class="fas fa-credit-card"></i> ${t.paymentInfo}</div>`;
+        if(localizedPayment) paymentHtml += `<div>${t.paymentMethod}: ${escapeHtml(localizedPayment)}</div>`;
+        if(data.iban) paymentHtml += `<div>IBAN: ${escapeHtml(data.iban)}</div>`;
+        paymentHtml += `</div>`;
+    }
+    const notesHtml = localizedNotes ? `<div class="footer-note" style="background:#f9f9f9; padding:10px; border-radius:12px; margin-top:10px;"><i class="fas fa-comment"></i> ${escapeHtml(localizedNotes)}</div>` : '';
+    const isRtl = data.language === 'ar';
+    const dir = isRtl ? 'rtl' : 'ltr';
+    const textAlign = isRtl ? 'text-align:right' : 'text-align:left';
+    const finalHtml = `<div dir="${dir}" style="${textAlign}"><div class="invoice-header"><div class="company-main"><div class="company-name-ar">${escapeHtml(data.companyNameAr)}</div><div class="company-name-fr">${escapeHtml(data.companyNameFr)}</div><div class="legal-status">${legalFormHtml} ${capitalHtml}</div><div class="reg-numbers"><span>NIF: ${escapeHtml(data.companyNif)}</span><span>NIS: ${escapeHtml(data.companyNis)}</span><span>RC: ${escapeHtml(data.companyRc)}</span><span>ART: ${escapeHtml(data.companyArt)}</span></div><div class="company-contact">${data.companyPhone ? `📞 ${escapeHtml(data.companyPhone)}` : ''} ${data.companyPhone && data.companyEmail ? ' | ' : ''} ${data.companyEmail ? `✉️ ${escapeHtml(data.companyEmail)}` : ''}<br>📍 ${escapeHtml(data.companyAddr)}</div></div></div><div class="invoice-type-section"><div class="invoice-type-badge">${invoiceTypeText}</div><div class="invoice-ref">${t.number}: ${escapeHtml(data.invoiceNumber)} | ${t.date}: ${dateFormatted} | ${t.dueDate}: ${dueFormatted}</div></div><div class="client-section"><div class="client-title"><i class="fas fa-user-circle"></i> ${t.client}</div><div class="client-info-grid"><div><span class="client-label">${t.name}:</span> ${escapeHtml(data.clientName)}</div>${clientExtra}</div></div>${itemsHtml}<div class="totals-section"><div class="totals-line"><strong>${t.subtotal} :</strong> ${formatCurrency(toCents(subTotal))}</div>${taxDisplay}<div class="totals-line total"><strong>${t.totalDue} :</strong> ${formatCurrency(toCents(totalToShow))}</div></div>${paymentHtml}${notesHtml}<div class="signatures"><div class="signature-box"><div>${t.companyStamp}</div><div class="signature-line">_________________</div></div><div class="signature-box"><div>${t.clientSignature}</div><div class="signature-line">_________________</div></div></div><div class="footer-note">${t.footerNote} - NIF: ${escapeHtml(data.companyNif)}</div></div>`;
+    const previewDiv = document.getElementById('invoicePreviewContent');
+    if(previewDiv) previewDiv.innerHTML = finalHtml;
+}
+
+function getInvoiceFormData(){
+    return {
+        companyNameAr: document.getElementById('companyNameAr')?.value||'', companyNameFr: document.getElementById('companyNameFr')?.value||'', legalForm: document.getElementById('legalForm')?.value||'', capital: document.getElementById('capital')?.value||'',
+        companyNif: document.getElementById('companyNif')?.value||'', companyNis: document.getElementById('companyNis')?.value||'', companyRc: document.getElementById('companyRc')?.value||'', companyArt: document.getElementById('companyArt')?.value||'',
+        companyPhone: document.getElementById('companyPhone')?.value||'', companyEmail: document.getElementById('companyEmail')?.value||'', companyAddr: document.getElementById('companyAddr')?.value||'',
+        invoiceType: document.getElementById('invoiceType')?.value||'officielle', invoiceNumber: document.getElementById('invoiceNumber')?.value||'', invoiceDate: document.getElementById('invoiceDate')?.value||'', dueDate: document.getElementById('dueDate')?.value||'',
+        clientName: document.getElementById('clientName')?.value||'', clientNif: document.getElementById('clientNif')?.value||'', clientNis: document.getElementById('clientNis')?.value||'', clientPhone: document.getElementById('clientPhone')?.value||'',
+        taxRate: parseFloat(document.getElementById('taxRate')?.value)||0, paymentMethod: document.getElementById('paymentMethod')?.value||'', iban: document.getElementById('iban')?.value||'', notes: document.getElementById('notes')?.value||'',
+        language: document.getElementById('invoiceLanguage')?.value||'ar', showQuantity: document.getElementById('showQuantityColumn')?.checked !== false
+    };
+}
+
+async function saveInvoiceToDB(editingId=null){
+    const data = getInvoiceFormData();
+    if(!data.clientName){ showToast('الرجاء إدخال اسم الزبون','error'); return; }
+    if(invoiceItems.length===0 || invoiceItems.every(it=>it.quantity===0||it.price===0)){ showToast('الرجاء إضافة منتج أو خدمة صالحة','error'); return; }
+    showLoading();
+    try{
+        let customers = await getStore('customers');
+        let customer = customers.find(c=>c.name===data.clientName);
+        if(!customer){
+            customer = { id: generateUUID(), code: 'CUST-'+Date.now(), name: data.clientName, phone: data.clientPhone||'', nif: data.clientNif||'', nis: data.clientNis||'', total_amount:0, paid_amount:0, total_debt:0, is_active:true, created_by: currentUser.uid, created_by_name: currentUser.email, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+            customers.push(customer);
+            await saveStore('customers', customers);
+        }
+        const { subTotal, taxAmount, total } = computeTotals(invoiceItems, data.taxRate);
+        const isOfficial = data.invoiceType === 'officielle';
+        const finalTotal = isOfficial ? total : subTotal;
+        let invoiceNumber = data.invoiceNumber;
+        if (!editingId) {
+            let settingsArr = await getStore('settings');
+            const nextNum = settingsArr[0]?.invoiceCounter || 1;
+            invoiceNumber = `INV-${new Date().getFullYear()}-${nextNum}`;
+            settingsArr[0].invoiceCounter = nextNum + 1;
+            await saveStore('settings', settingsArr);
+        }
+        const invoiceData = {
+            id: editingId || generateUUID(), invoice_number: invoiceNumber, customer_id: customer.id, invoice_date: data.invoiceDate, due_date: data.dueDate,
+            total_amount: toCents(finalTotal), paid_amount: 0, remaining_amount: toCents(finalTotal), discount: 0, tax_rate: toCents(data.taxRate),
+            status: 'unpaid', notes: data.notes, invoice_type: data.invoiceType, created_by: editingId ? (await getStore('invoices')).find(i=>i.id==editingId)?.created_by : currentUser.uid,
+            created_by_name: editingId ? (await getStore('invoices')).find(i=>i.id==editingId)?.created_by_name : currentUser.email,
+            created_at: editingId ? (await getStore('invoices')).find(i=>i.id==editingId)?.created_at : new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+        let invoices = await getStore('invoices');
+        if(editingId){
+            const existingInv = invoices.find(i=>i.id==editingId);
+            if (currentUser.role !== 'admin' && existingInv.created_by !== currentUser.uid) throw new Error('غير مصرح لك بتعديل هذه الفاتورة');
+            invoices = invoices.filter(i=>i.id!=editingId);
+            invoices.push(invoiceData);
+            await saveStore('invoices', invoices);
+            let items = await getStore('invoice_items');
+            items = items.filter(it=>it.invoice_id!=editingId);
+            await saveStore('invoice_items', items);
+        } else {
+            invoices.push(invoiceData);
+            await saveStore('invoices', invoices);
+        }
+        let itemsArr = await getStore('invoice_items');
+        for(let it of invoiceItems){
+            itemsArr.push({ id: generateUUID(), invoice_id: invoiceData.id, description: it.name, quantity: it.quantity, price: toCents(it.price), total: toCents(it.quantity*it.price) });
+        }
+        await saveStore('invoice_items', itemsArr);
+        await updateCustomerTotals(customer.id);
+        showToast(editingId?'✅ تم تعديل الفاتورة بنجاح':'✅ تم حفظ الفاتورة بنجاح','success');
+        renderInvoicesList();
+    } catch(e){ showToast(e.message,'error'); } finally { hideLoading(); }
+}
+
+async function renderInvoicesList(page=1, limit=10){
+    showLoading();
+    try{
+        let invoices = await getStore('invoices');
+        if(currentUser.role !== 'admin') invoices = invoices.filter(i=>i.created_by===currentUser.uid);
+        const total = invoices.length, totalPages = Math.ceil(total/limit);
+        const paginated = invoices.slice((page-1)*limit, page*limit);
+        const customers = await getStore('customers');
+        document.getElementById('content').innerHTML = `<div class="d-flex justify-content-between align-items-center mb-4"><h4><i class="fas fa-list"></i> قائمة الفواتير</h4><button class="btn btn-primary" onclick="window.renderInvoices()"><i class="fas fa-plus"></i> فاتورة جديدة</button></div><div class="table-responsive"><table class="table table-hover"><thead><tr><th>رقم الفاتورة</th><th>الزبون</th><th>التاريخ</th><th>الإجمالي</th><th>المدفوع</th><th>المتبقي</th><th>الحالة</th><th></th></tr></thead><tbody>${paginated.map(inv=>{ const cust = customers.find(c=>c.id==inv.customer_id); return `<tr><td>${escapeHtml(inv.invoice_number)}</td><td>${cust?escapeHtml(cust.name):'-'}</td><td>${escapeHtml(inv.invoice_date)}</td><td>${formatCurrency(inv.total_amount)}</td><td>${formatCurrency(inv.paid_amount)}</td><td class="text-danger">${formatCurrency(inv.remaining_amount)}</td><td><span class="badge ${inv.status==='paid'?'bg-success':inv.status==='partial'?'bg-warning':'bg-danger'}">${inv.status==='paid'?'مدفوعة':inv.status==='partial'?'مدفوعة جزئياً':'غير مدفوعة'}</span></td><td><button class="btn btn-sm btn-info" onclick="window.viewInvoiceDetail('${inv.id}')"><i class="fas fa-eye"></i></button> <button class="btn btn-sm btn-warning" onclick="window.editInvoice('${inv.id}')"><i class="fas fa-edit"></i></button> ${currentUser.role==='admin'?`<button class="btn btn-sm btn-danger" onclick="window.deleteInvoice('${inv.id}')"><i class="fas fa-trash"></i></button>`:''}</td></tr>`; }).join('')}</tbody></table></div><div class="pagination">${Array.from({length:totalPages},(_,i)=>`<button class="btn btn-sm btn-outline-primary" onclick="window.renderInvoicesList(${i+1},${limit})">${i+1}</button>`).join('')}</div>`;
+    } catch(e){ showToast('فشل تحميل قائمة الفواتير','error'); } finally { hideLoading(); }
+}
+
+async function editInvoice(id){ renderInvoices(id); }
+async function deleteInvoice(id){
+    if(currentUser.role !== 'admin'){ showToast('هذه العملية تتطلب صلاحيات المدير','error'); return; }
+    if(!confirm('هل أنت متأكد من حذف هذه الفاتورة؟ سيتم حذف جميع الدفعات المرتبطة بها.')) return;
+    showLoading();
+    try{
+        let items = await getStore('invoice_items');
+        items = items.filter(it=>it.invoice_id!=id);
+        await saveStore('invoice_items', items);
+        let payments = await getStore('invoice_payments');
+        payments = payments.filter(p=>p.invoice_id!=id);
+        await saveStore('invoice_payments', payments);
+        let invoices = await getStore('invoices');
+        const invoice = invoices.find(i=>i.id==id);
+        if(invoice){ await updateCustomerTotals(invoice.customer_id); }
+        invoices = invoices.filter(i=>i.id!=id);
+        await saveStore('invoices', invoices);
+        showToast('تم حذف الفاتورة بنجاح','success');
+        renderInvoicesList();
+    } catch(e){ showToast(e.message,'error'); } finally { hideLoading(); }
+}
+
+async function viewInvoiceDetail(id){
+    showLoading();
+    try{
+        const inv = (await getStore('invoices')).find(i=>i.id==id);
+        if(!inv) throw new Error('الفاتورة غير موجودة');
+        if (currentUser.role !== 'admin' && inv.created_by !== currentUser.uid) throw new Error('غير مصرح لك بالوصول');
+        const cust = (await getStore('customers')).find(c=>c.id==inv.customer_id);
+        const payments = (await getStore('invoice_payments')).filter(p=>p.invoice_id==id);
+        const items = (await getStore('invoice_items')).filter(i=>i.invoice_id==id);
+        document.getElementById('content').innerHTML = `<button class="btn btn-secondary mb-3" onclick="window.renderInvoicesList()"><i class="fas fa-arrow-right"></i> رجوع</button><div class="card"><div class="card-header"><h5>تفاصيل الفاتورة: ${escapeHtml(inv.invoice_number)}</h5></div><div class="card-body"><div class="row"><div class="col-md-6"><p><strong>الزبون:</strong> ${cust?escapeHtml(cust.name):'-'}</p><p><strong>التاريخ:</strong> ${escapeHtml(inv.invoice_date)}</p><p><strong>تاريخ الاستحقاق:</strong> ${escapeHtml(inv.due_date||'-')}</p></div><div class="col-md-6"><p><strong>الإجمالي:</strong> ${formatCurrency(inv.total_amount)}</p><p><strong>المدفوع:</strong> ${formatCurrency(inv.paid_amount)}</p><p><strong>المتبقي:</strong> <span class="text-danger">${formatCurrency(inv.remaining_amount)}</span></p><div class="progress"><div class="progress-bar bg-success" style="width: ${(inv.paid_amount/inv.total_amount)*100}%"></div></div></div></div><hr><h6>المنتجات / الخدمات</h6><div class="table-responsive"><table class="table table-sm"><thead><tr><th>المنتج</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th></tr></thead><tbody>${items.map(it=>`<tr><td>${escapeHtml(it.description||'-')}</td><td>${it.quantity}</td><td>${formatCurrency(it.price)}</td><td>${formatCurrency(it.total)}</td></tr>`).join('')}</tbody></table></div><hr><h6>سجل الدفعات</h6><div class="table-responsive"><table class="table table-sm"><thead><tr><th>التاريخ</th><th>المبلغ</th><th>ملاحظات</th></tr></thead><tbody>${payments.map(p=>`<tr><td>${escapeHtml(p.payment_date)}</td><td class="text-success">${formatCurrency(p.amount)}</td><td>${escapeHtml(p.notes||'-')}</td></tr>`).join('')}</tbody></table></div><div class="mt-3"><button class="btn btn-success" onclick="window.addCustomerPayment('${cust?.id}')"><i class="fas fa-money-bill-wave"></i> تسجيل دفعة</button> <button class="btn btn-primary" onclick="window.editInvoice('${inv.id}')"><i class="fas fa-edit"></i> تعديل الفاتورة</button></div></div></div>`;
+    } catch(e){ showToast(e.message,'error'); } finally { hideLoading(); }
+}
+
+// ================== WORKSHOP DEBTS ==================
+async function renderWorkshopDebts(page=1, limit=10){
+    showLoading();
+    try{
+        let debts = await getStore('workshop_debts');
+        if(currentUser.role !== 'admin') debts = debts.filter(d=>d.created_by===currentUser.uid);
+        const total = debts.length, totalPages = Math.ceil(total/limit);
+        const paginated = debts.slice((page-1)*limit, page*limit);
+        const expenses = await getStore('expenses');
+        document.getElementById('content').innerHTML = `<div class="d-flex justify-content-between align-items-center mb-4"><h4><i class="fas fa-building"></i> ديون الورشة</h4><button class="btn btn-primary" onclick="window.showWorkshopDebtModal()"><i class="fas fa-plus"></i> دين جديد</button></div><div class="table-responsive"><table class="table table-hover"><thead><tr><th>البيان</th><th>المبلغ الكلي</th><th>المدفوع</th><th>المتبقي</th><th>تاريخ الاستحقاق</th><th>الحالة</th><th>المصروف المرتبط</th><th></th></tr></thead><tbody>${paginated.map(d=>{ const exp = expenses.find(e=>e.id==d.expense_id); return `<tr><td>${escapeHtml(d.name)}</td><td>${formatCurrency(d.total_amount)}</td><td>${formatCurrency(d.paid_amount)}</td><td class="text-danger">${formatCurrency(d.remaining_amount)}</td><td>${escapeHtml(d.due_date||'-')}</td><td><span class="badge ${d.remaining_amount===0?'bg-success':'bg-danger'}">${d.remaining_amount===0?'مسدد':'غير مسدد'}</span></td><td>${exp?escapeHtml(exp.description):'-'}</td><td><button class="btn btn-sm btn-success" onclick="window.addWorkshopDebtPayment('${d.id}')"><i class="fas fa-money-bill"></i> تسديد</button> ${currentUser.role==='admin'?`<button class="btn btn-sm btn-danger" onclick="window.deleteWorkshopDebt('${d.id}')"><i class="fas fa-trash"></i></button>`:''}</td></tr>`; }).join('')}</tbody></table></div><div class="pagination">${Array.from({length:totalPages},(_,i)=>`<button class="btn btn-sm btn-outline-primary" onclick="window.renderWorkshopDebts(${i+1},${limit})">${i+1}</button>`).join('')}</div>`;
+    } catch(e){ showToast('فشل تحميل ديون الورشة','error'); } finally { hideLoading(); }
+}
+
+async function showWorkshopDebtModal(){
+    const expenses = await getStore('expenses');
+    const modalHtml = `<div class="modal fade" id="workshopDebtModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5>إضافة دين ورشة</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="text" id="debtName" class="form-control mb-2" placeholder="البيان *"><input type="number" id="debtAmount" class="form-control mb-2" placeholder="المبلغ الكلي *"><input type="date" id="debtDueDate" class="form-control mb-2" placeholder="تاريخ الاستحقاق"><select id="debtExpenseId" class="form-control mb-2"><option value="">ربط بمصروف (اختياري)</option>${expenses.map(e=>`<option value="${e.id}">${escapeHtml(e.description)} - ${formatCurrency(e.amount)}</option>`).join('')}</select></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button><button class="btn btn-primary" onclick="window.saveWorkshopDebt()">حفظ</button></div></div></div></div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const modal = new bootstrap.Modal(document.getElementById('workshopDebtModal')); modal.show();
+    document.getElementById('workshopDebtModal').addEventListener('hidden.bs.modal', () => document.getElementById('workshopDebtModal')?.remove());
+}
+
+async function saveWorkshopDebt(){
+    const name = document.getElementById('debtName').value.trim();
+    const amountVal = parseFloat(document.getElementById('debtAmount').value);
+    if(!name || isNaN(amountVal) || amountVal <= 0){ showToast('البيان والمبلغ مطلوبان بقيمة موجبة','error'); return; }
+    showLoading();
+    try{
+        const newDebt = { id: generateUUID(), name, total_amount: toCents(amountVal), paid_amount: 0, remaining_amount: toCents(amountVal), due_date: document.getElementById('debtDueDate').value, expense_id: document.getElementById('debtExpenseId').value || null, created_by: currentUser.uid, created_by_name: currentUser.email, created_at: new Date().toISOString() };
+        let debts = await getStore('workshop_debts'); debts.push(newDebt); await saveStore('workshop_debts', debts);
+        bootstrap.Modal.getInstance(document.getElementById('workshopDebtModal')).hide(); renderWorkshopDebts(); showToast('✅ تم إضافة الدين','success');
+    } catch(e){ showToast(e.message,'error'); } finally { hideLoading(); }
+}
+
+async function addWorkshopDebtPayment(debtId){
+    const debts = await getStore('workshop_debts'); const debt = debts.find(d=>d.id==debtId); if(!debt) return;
+    if (currentUser.role !== 'admin' && debt.created_by !== currentUser.uid) { showToast('غير مصرح لك','error'); return; }
+    const modalHtml = `<div class="modal fade" id="paymentDebtModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5>تسديد دين: ${escapeHtml(debt.name)}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-2"><strong>المتبقي:</strong> ${formatCurrency(debt.remaining_amount)}</div><input type="number" id="paymentAmount" class="form-control mb-2" placeholder="المبلغ" max="${fromCents(debt.remaining_amount)}" step="1000"><input type="date" id="paymentDate" class="form-control mb-2" value="${new Date().toISOString().slice(0,10)}"><textarea id="paymentNotes" class="form-control" placeholder="ملاحظات"></textarea></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button><button class="btn btn-primary" onclick="window.saveWorkshopDebtPayment('${debtId}')">تسديد</button></div></div></div></div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const modal = new bootstrap.Modal(document.getElementById('paymentDebtModal')); modal.show();
+    document.getElementById('paymentDebtModal').addEventListener('hidden.bs.modal', () => document.getElementById('paymentDebtModal')?.remove());
+}
+
+async function saveWorkshopDebtPayment(debtId){
+    const amountVal = parseFloat(document.getElementById('paymentAmount').value);
+    if(isNaN(amountVal) || amountVal<=0){ showToast('المبلغ غير صحيح','error'); return; }
+    const amountCents = toCents(amountVal);
+    showLoading();
+    try{
+        let debts = await getStore('workshop_debts'); const index = debts.findIndex(d=>d.id==debtId);
+        if(index===-1) throw new Error('الدين غير موجود'); const debt = debts[index];
+        if(amountCents > debt.remaining_amount) throw new Error(`المبلغ أكبر من المتبقي (${formatCurrency(debt.remaining_amount)})`);
+        debt.paid_amount += amountCents; debt.remaining_amount = debt.total_amount - debt.paid_amount; debts[index] = debt;
+        await saveStore('workshop_debts', debts); showToast('✅ تم تسديد المبلغ','success');
+        const modalEl = document.getElementById('paymentDebtModal'); if(modalEl) bootstrap.Modal.getInstance(modalEl).hide(); renderWorkshopDebts();
+    } catch(e){ showToast(e.message,'error'); } finally { hideLoading(); }
+}
+
+async function deleteWorkshopDebt(id){
+    if(currentUser.role !== 'admin'){ showToast('هذه العملية تتطلب صلاحيات المدير','error'); return; }
+    if(!confirm('هل أنت متأكد من حذف هذا الدين؟')) return;
+    showLoading();
+    try{ let debts = await getStore('workshop_debts'); debts = debts.filter(d=>d.id!=id); await saveStore('workshop_debts', debts); showToast('تم حذف الدين','success'); renderWorkshopDebts(); }
+    catch(e){ showToast(e.message,'error'); } finally { hideLoading(); }
+}
+
+// ================== WORKERS (كامل - مع إصلاح الخصم) ==================
+async function renderWorkers(page = 1, limit = 10) {
+    showLoading();
+    try {
+        let workers = await getStore('workers');
+        if (currentUser.role !== 'admin') workers = workers.filter(w => w.created_by === currentUser.uid);
+        const total = workers.length, totalPages = Math.ceil(total / limit);
+        const paginated = workers.slice((page - 1) * limit, page * limit);
+        const advances = await getStore('worker_advances');
+        const overtimes = await getStore('worker_overtime');
+        const absences = await getStore('worker_absences');
+        document.getElementById('content').innerHTML = `<div class="d-flex justify-content-between align-items-center mb-4"><h4><i class="fas fa-hard-hat"></i> عمال الورشة</h4><div><button class="btn btn-primary" onclick="window.showWorkerModal()"><i class="fas fa-plus"></i> عامل جديد</button><button class="btn btn-info" onclick="window.showFinancialArchive()"><i class="fas fa-archive"></i> أرشيف مالي</button></div></div><div class="row" id="workersList">${paginated.map(w => { const advSum = advances.filter(a => a.worker_id == w.id).reduce((s, a) => s + a.amount, 0); const ovSum = overtimes.filter(o => o.worker_id == w.id).reduce((s, o) => s + o.hours, 0); const absSum = absences.filter(a => a.worker_id == w.id && !a.is_paid).reduce((s, a) => s + a.days, 0); const ovPay = ovSum * (w.hourly_rate || 0); const absenceDeduction = absSum * (fromCents(w.monthly_salary) / 30); const totalSalary = w.monthly_salary + ovPay - toCents(absenceDeduction); const remaining = totalSalary - advSum; return `<div class="col-md-4 mb-3"><div class="card h-100"><div class="card-body"><h5>${escapeHtml(w.name)}</h5><p><i class="fas fa-phone"></i> ${escapeHtml(w.phone || '-')}<br><strong>الراتب الشهري:</strong> ${formatCurrency(w.monthly_salary)}<br><strong>سعر الساعة الإضافية:</strong> ${formatCurrency(w.hourly_rate || 0)}<br><strong>ساعات إضافية:</strong> ${ovSum} ساعة (${formatCurrency(ovPay)})<br><strong>أيام الغياب:</strong> ${absSum} يوم (${formatCurrency(toCents(absenceDeduction))})<br><strong>إجمالي الراتب:</strong> ${formatCurrency(totalSalary)}<br><strong>التسبيقات:</strong> ${formatCurrency(advSum)}<br><strong class="text-danger">المتبقي:</strong> ${formatCurrency(remaining)}</p><div class="btn-group btn-group-sm w-100"><button class="btn btn-info" onclick="window.showWorkerDetails('${w.id}')"><i class="fas fa-eye"></i> تفاصيل</button><button class="btn btn-warning" onclick="window.showWorkerModal('${w.id}')"><i class="fas fa-edit"></i> تعديل</button><button class="btn btn-success" onclick="window.addWorkerAdvance('${w.id}')"><i class="fas fa-hand-holding-usd"></i> تسبيق</button><button class="btn btn-primary" onclick="window.addWorkerOvertime('${w.id}')"><i class="fas fa-clock"></i> إضافي</button><button class="btn btn-danger" onclick="window.addWorkerAbsence('${w.id}')"><i class="fas fa-calendar-times"></i> غياب</button><button class="btn btn-secondary" onclick="window.generateWorkerPayroll('${w.id}')"><i class="fas fa-file-invoice-dollar"></i> راتب</button></div></div></div></div>`; }).join('')}</div><div class="pagination">${Array.from({ length: totalPages }, (_, i) => `<button class="btn btn-sm btn-outline-primary" onclick="window.renderWorkers(${i + 1},${limit})">${i + 1}</button>`).join('')}</div>`;
+    } catch (e) { showToast('فشل تحميل العمال: ' + e.message, 'error'); } finally { hideLoading(); }
+}
+
+async function showWorkerModal(id = null) {
+    let worker = id ? (await getStore('workers')).find(w => w.id == id) : null;
+    if (id && currentUser.role !== 'admin' && worker && worker.created_by !== currentUser.uid) { showToast('غير مصرح لك بتعديل هذا العامل', 'error'); return; }
+    const modalHtml = `<div class="modal fade" id="workerModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5>${worker ? 'تعديل عامل' : 'إضافة عامل'}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="text" id="workerName" class="form-control mb-2" placeholder="الاسم *" value="${worker ? escapeHtml(worker.name) : ''}"><input type="text" id="workerPhone" class="form-control mb-2" placeholder="رقم الهاتف" value="${worker ? escapeHtml(worker.phone) : ''}"><input type="number" id="workerMonthlySalary" class="form-control mb-2" placeholder="الراتب الشهري *" value="${worker ? fromCents(worker.monthly_salary) : ''}"><input type="number" id="workerHourlyRate" class="form-control mb-2" placeholder="سعر الساعة الإضافية" value="${worker ? fromCents(worker.hourly_rate) : 0}"></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button><button class="btn btn-primary" onclick="window.saveWorker('${id || 0}')">حفظ</button></div></div></div></div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHtml); const modal = new bootstrap.Modal(document.getElementById('workerModal')); modal.show();
+    document.getElementById('workerModal').addEventListener('hidden.bs.modal', () => document.getElementById('workerModal')?.remove());
+}
+
+async function saveWorker(id) {
+    const name = document.getElementById('workerName').value.trim();
+    const salary = parseFloat(document.getElementById('workerMonthlySalary').value);
+    if (!name || isNaN(salary) || salary <= 0) { showToast('الاسم والراتب الشهري مطلوبان بقيمة موجبة', 'error'); return; }
+    showLoading();
+    try {
+        let workers = await getStore('workers');
+        if (id !== '0') {
+            const index = workers.findIndex(w => w.id == id); if (index === -1) throw new Error('العامل غير موجود');
+            if (currentUser.role !== 'admin' && workers[index].created_by !== currentUser.uid) throw new Error('غير مصرح');
+            workers[index].name = name; workers[index].phone = document.getElementById('workerPhone').value;
+            workers[index].monthly_salary = toCents(salary); workers[index].hourly_rate = toCents(parseFloat(document.getElementById('workerHourlyRate').value) || 0);
+            workers[index].updated_at = new Date().toISOString(); await saveStore('workers', workers); showToast('تم تعديل العامل', 'success');
+        } else {
+            const newWorker = { id: generateUUID(), name, phone: document.getElementById('workerPhone').value, monthly_salary: toCents(salary), hourly_rate: toCents(parseFloat(document.getElementById('workerHourlyRate').value) || 0), created_by: currentUser.uid, created_by_name: currentUser.email, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+            workers.push(newWorker); await saveStore('workers', workers); showToast('تم إضافة العامل', 'success');
+        }
+        bootstrap.Modal.getInstance(document.getElementById('workerModal')).hide(); renderWorkers();
+    } catch (e) { showToast(e.message, 'error'); } finally { hideLoading(); }
+}
+
+async function showWorkerDetails(workerId) {
+    const worker = (await getStore('workers')).find(w => w.id == workerId); if (!worker) return;
+    if (currentUser.role !== 'admin' && worker.created_by !== currentUser.uid) { showToast('غير مصرح', 'error'); return; }
+    const advances = (await getStore('worker_advances')).filter(a => a.worker_id == workerId);
+    const overtimes = (await getStore('worker_overtime')).filter(o => o.worker_id == workerId);
+    const absences = (await getStore('worker_absences')).filter(a => a.worker_id == workerId);
+    const modalHtml = `<div class="modal fade" id="workerDetailsModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header"><h5>تفاصيل العامل: ${escapeHtml(worker.name)}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><h6>سجل التسبيقات</h6><div class="table-responsive"><table class="table table-sm"><thead><tr><th>التاريخ</th><th>المبلغ</th><th>ملاحظات</th></tr></thead><tbody>${advances.map(a => `<tr><td>${escapeHtml(a.date)}</td><td>${formatCurrency(a.amount)}</td><td>${escapeHtml(a.notes || '-')}</td></tr>`).join('') || '<tr><td colspan="3">لا توجد تسبيقات</td></tr>'}</tbody></table></div><h6 class="mt-3">سجل الساعات الإضافية</h6><div class="table-responsive"><table class="table table-sm"><thead><tr><th>التاريخ</th><th>عدد الساعات</th><th>ملاحظات</th></tr></thead><tbody>${overtimes.map(o => `<tr><td>${escapeHtml(o.date)}</td><td>${o.hours}</td><td>${escapeHtml(o.notes || '-')}</td></tr>`).join('') || '<tr><td colspan="3">لا توجد ساعات إضافية</td></tr>'}</tbody></table></div><h6 class="mt-3">سجل الغيابات</h6><div class="table-responsive"><table class="table table-sm"><thead><tr><th>التاريخ</th><th>عدد الأيام</th><th>السبب</th><th>الحالة</th></tr></thead><tbody>${absences.map(a => `<tr><td>${escapeHtml(a.date)}</td><td>${a.days}</td><td>${escapeHtml(a.notes || '-')}</td><td>${a.is_paid ? 'تم الخصم' : 'قيد المعالجة'}</td></tr>`).join('') || '<tr><td colspan="4">لا توجد غيابات</td></tr>'}</tbody></table></div></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button></div></div></div></div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHtml); const modal = new bootstrap.Modal(document.getElementById('workerDetailsModal')); modal.show();
+    document.getElementById('workerDetailsModal').addEventListener('hidden.bs.modal', () => document.getElementById('workerDetailsModal')?.remove());
+}
+
+async function addWorkerAdvance(workerId) {
+    const modalHtml = `<div class="modal fade" id="advanceModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5>تسبيق للعامل</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="number" id="advanceAmount" class="form-control mb-2" placeholder="المبلغ *"><input type="date" id="advanceDate" class="form-control mb-2" value="${new Date().toISOString().slice(0, 10)}"><textarea id="advanceNotes" class="form-control" placeholder="ملاحظات"></textarea></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button><button class="btn btn-primary" onclick="window.saveWorkerAdvance('${workerId}')">حفظ</button></div></div></div></div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHtml); const modal = new bootstrap.Modal(document.getElementById('advanceModal')); modal.show();
+    document.getElementById('advanceModal').addEventListener('hidden.bs.modal', () => document.getElementById('advanceModal')?.remove());
+}
+async function saveWorkerAdvance(workerId) { const amountVal = parseFloat(document.getElementById('advanceAmount').value); if (isNaN(amountVal) || amountVal <= 0) { showToast('المبلغ غير صحيح', 'error'); return; } showLoading(); try { const advances = await getStore('worker_advances'); advances.push({ id: generateUUID(), worker_id: workerId, amount: toCents(amountVal), date: document.getElementById('advanceDate').value, notes: document.getElementById('advanceNotes').value, created_at: new Date().toISOString() }); await saveStore('worker_advances', advances); bootstrap.Modal.getInstance(document.getElementById('advanceModal')).hide(); renderWorkers(); showToast('✅ تم تسجيل التسبيق', 'success'); } catch (e) { showToast(e.message, 'error'); } finally { hideLoading(); } }
+
+async function addWorkerOvertime(workerId) { const modalHtml = `<div class="modal fade" id="overtimeModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5>إضافة ساعات إضافية</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="number" id="overtimeHours" class="form-control mb-2" placeholder="عدد الساعات *" step="0.5"><input type="date" id="overtimeDate" class="form-control mb-2" value="${new Date().toISOString().slice(0, 10)}"><textarea id="overtimeNotes" class="form-control" placeholder="ملاحظات"></textarea></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button><button class="btn btn-primary" onclick="window.saveWorkerOvertime('${workerId}')">حفظ</button></div></div></div></div>`; document.body.insertAdjacentHTML('beforeend', modalHtml); const modal = new bootstrap.Modal(document.getElementById('overtimeModal')); modal.show(); document.getElementById('overtimeModal').addEventListener('hidden.bs.modal', () => document.getElementById('overtimeModal')?.remove()); }
+async function saveWorkerOvertime(workerId) { const hours = parseFloat(document.getElementById('overtimeHours').value); if (isNaN(hours) || hours <= 0) { showToast('عدد الساعات غير صحيح', 'error'); return; } showLoading(); try { const overtimes = await getStore('worker_overtime'); overtimes.push({ id: generateUUID(), worker_id: workerId, hours: hours, date: document.getElementById('overtimeDate').value, notes: document.getElementById('overtimeNotes').value, created_at: new Date().toISOString() }); await saveStore('worker_overtime', overtimes); bootstrap.Modal.getInstance(document.getElementById('overtimeModal')).hide(); renderWorkers(); showToast('✅ تم إضافة الساعات الإضافية', 'success'); } catch (e) { showToast(e.message, 'error'); } finally { hideLoading(); } }
+
+async function addWorkerAbsence(workerId) { const modalHtml = `<div class="modal fade" id="absenceModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5>تسجيل غياب للعامل</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="number" id="absenceDays" class="form-control mb-2" placeholder="عدد أيام الغياب *" step="0.5" min="0"><input type="date" id="absenceDate" class="form-control mb-2" value="${new Date().toISOString().slice(0, 10)}"><textarea id="absenceNotes" class="form-control" placeholder="سبب الغياب"></textarea></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button><button class="btn btn-primary" onclick="window.saveWorkerAbsence('${workerId}')">حفظ</button></div></div></div></div>`; document.body.insertAdjacentHTML('beforeend', modalHtml); const modal = new bootstrap.Modal(document.getElementById('absenceModal')); modal.show(); document.getElementById('absenceModal').addEventListener('hidden.bs.modal', () => document.getElementById('absenceModal')?.remove()); }
+async function saveWorkerAbsence(workerId) { const days = parseFloat(document.getElementById('absenceDays').value); if (isNaN(days) || days <= 0) { showToast('عدد أيام الغياب غير صحيح', 'error'); return; } showLoading(); try { const absences = await getStore('worker_absences'); absences.push({ id: generateUUID(), worker_id: workerId, days: days, date: document.getElementById('absenceDate').value, notes: document.getElementById('absenceNotes').value, is_paid: false, created_at: new Date().toISOString() }); await saveStore('worker_absences', absences); bootstrap.Modal.getInstance(document.getElementById('absenceModal')).hide(); renderWorkers(); showToast('✅ تم تسجيل الغياب', 'success'); } catch (e) { showToast(e.message, 'error'); } finally { hideLoading(); } }
+
+async function generateWorkerPayroll(workerId) {
+    const worker = (await getStore('workers')).find(w => w.id == workerId); if (!worker) return;
+    if (currentUser.role !== 'admin' && worker.created_by !== currentUser.uid) { showToast('غير مصرح', 'error'); return; }
+    const advances = (await getStore('worker_advances')).filter(a => a.worker_id == workerId).reduce((s, a) => s + a.amount, 0);
+    const overtimes = (await getStore('worker_overtime')).filter(o => o.worker_id == workerId).reduce((s, o) => s + o.hours, 0);
+    const absences = (await getStore('worker_absences')).filter(a => a.worker_id == workerId && !a.is_paid).reduce((s, a) => s + a.days, 0);
+    const overtimePay = overtimes * (worker.hourly_rate || 0);
+    const absenceDeduction = absences * (fromCents(worker.monthly_salary) / 30);
+    const totalSalary = worker.monthly_salary + overtimePay - toCents(absenceDeduction);
+    const netPayable = totalSalary - advances;
+    if (netPayable <= 0) { showToast('لا يوجد مبلغ مستحق للعامل', 'error'); return; }
+    const payrolls = await getStore('worker_payroll_invoices');
+    payrolls.push({ id: generateUUID(), worker_id: workerId, month: new Date().toISOString().slice(0, 7), total_salary: totalSalary, overtime_hours: overtimes, overtime_amount: overtimePay, absence_days: absences, absence_deduction: toCents(absenceDeduction), advances_total: advances, net_payable: netPayable, created_at: new Date().toISOString() });
+    await saveStore('worker_payroll_invoices', payrolls);
+    showToast(`تم إنشاء فاتورة راتب للعامل ${worker.name} بمبلغ ${formatCurrency(netPayable)}`, 'success');
+    renderWorkers();
+}
+
+async function showFinancialArchive() {
+    showLoading();
+    try {
+        const workers = await getStore('workers'); const advances = await getStore('worker_advances');
+        const overtimes = await getStore('worker_overtime'); const absences = await getStore('worker_absences');
+        const payrolls = await getStore('worker_payroll_invoices');
+        let totalAdvances = 0, totalOvertime = 0, totalAbsence = 0, totalPaid = 0, archiveData = [];
+        for (const worker of workers) {
+            const workerAdvances = advances.filter(a => a.worker_id == worker.id).reduce((s, a) => s + a.amount, 0);
+            const workerOvertime = overtimes.filter(o => o.worker_id == worker.id).reduce((s, o) => s + (o.hours * (worker.hourly_rate || 0)), 0);
+            const workerAbsence = absences.filter(a => a.worker_id == worker.id && !a.is_paid).reduce((s, a) => s + (a.days * (fromCents(worker.monthly_salary) / 30)), 0);
+            const workerPayroll = payrolls.filter(p => p.worker_id == worker.id).reduce((s, p) => s + p.net_payable, 0);
+            totalAdvances += workerAdvances; totalOvertime += workerOvertime; totalAbsence += workerAbsence; totalPaid += workerPayroll;
+            archiveData.push({ name: worker.name, advances: workerAdvances, overtime: workerOvertime, absence: workerAbsence, paid: workerPayroll, net: workerPayroll - workerAdvances });
+        }
+        const modalHtml = `<div class="modal fade" id="financialArchiveModal" tabindex="-1"><div class="modal-dialog modal-xl"><div class="modal-content"><div class="modal-header bg-primary text-white"><h5><i class="fas fa-archive"></i> الأرشيف المالي للعمال</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="row mb-4"><div class="col-md-3"><div class="card bg-info text-white"><div class="card-body"><h6>إجمالي التسبيقات</h6><h4>${formatCurrency(totalAdvances)}</h4></div></div></div><div class="col-md-3"><div class="card bg-success text-white"><div class="card-body"><h6>إجمالي الساعات الإضافية</h6><h4>${formatCurrency(totalOvertime)}</h4></div></div></div><div class="col-md-3"><div class="card bg-warning text-white"><div class="card-body"><h6>إجمالي خصم الغياب</h6><h4>${formatCurrency(toCents(totalAbsence))}</h4></div></div></div><div class="col-md-3"><div class="card bg-danger text-white"><div class="card-body"><h6>إجمالي الرواتب المدفوعة</h6><h4>${formatCurrency(totalPaid)}</h4></div></div></div></div><div class="table-responsive"><table class="table table-hover"><thead><tr><th>العامل</th><th>التسبيقات</th><th>الساعات الإضافية</th><th>خصم الغياب</th><th>الرواتب المدفوعة</th><th>الصافي</th></tr></thead><tbody>${archiveData.map(d => `<tr><td>${escapeHtml(d.name)}</td><td class="text-danger">${formatCurrency(d.advances)}</td><td class="text-success">${formatCurrency(d.overtime)}</td><td class="text-warning">${formatCurrency(toCents(d.absence))}</td><td class="text-info">${formatCurrency(d.paid)}</td><td class="text-${d.net >= 0 ? 'success' : 'danger'}">${formatCurrency(d.net)}</td></tr>`).join('')}</tbody></table></div></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button></div></div></div></div>`;
+        document.body.insertAdjacentHTML('beforeend', modalHtml); const modal = new bootstrap.Modal(document.getElementById('financialArchiveModal')); modal.show();
+        document.getElementById('financialArchiveModal').addEventListener('hidden.bs.modal', () => document.getElementById('financialArchiveModal')?.remove());
+    } catch (e) { showToast('فشل تحميل الأرشيف: ' + e.message, 'error'); } finally { hideLoading(); }
+}
+
+// ================== EXPENSES (كامل) ==================
+async function renderExpenses(page = 1, limit = 10, filterUserId = '') { showLoading(); try { let expenses = await getStore('expenses'); if (currentUser.role !== 'admin') { expenses = expenses.filter(e => e.created_by === currentUser.uid); } else if (filterUserId) { expenses = expenses.filter(e => e.created_by == filterUserId); } const total = expenses.length, totalPages = Math.ceil(total / limit); const paginated = expenses.slice((page - 1) * limit, page * limit); const categories = await getStore('expense_categories'); const customers = await getStore('customers'); const users = await getStore('users'); const userOptions = users.map(u => `<option value="${u.id}" ${filterUserId == u.id ? 'selected' : ''}>${escapeHtml(u.full_name)}</option>`).join(''); document.getElementById('content').innerHTML = `<div class="d-flex justify-content-between align-items-center mb-4"><h4><i class="fas fa-money-bill-wave"></i> المصاريف</h4><button class="btn btn-primary" onclick="window.showExpenseModal()"><i class="fas fa-plus"></i> مصروف جديد</button></div><div class="filter-bar">${currentUser.role === 'admin' ? `<select id="expenseUserFilter" class="form-control w-auto" onchange="window.renderExpenses(1,10,this.value)"><option value="">كل المستخدمين</option>${userOptions}</select>` : ''}<input type="text" id="searchExpense" class="form-control" placeholder="بحث بالبيان..."></div><div class="table-responsive"><table class="table table-hover"><thead><tr><th>البيان</th><th>التصنيف</th><th>الزبون</th><th>المبلغ</th><th>التاريخ</th><th>الصورة</th><th>المستخدم</th><th></th></tr></thead><tbody>${paginated.map(exp => { const cat = categories.find(c => c.id == exp.category_id); const cust = customers.find(c => c.id == exp.customer_id); const user = users.find(u => u.id == exp.created_by); return `<tr><td>${escapeHtml(exp.description)}</td><td><span class="category-badge" style="background:${cat?.color || '#ccc'}20; color:${cat?.color || '#000'}">${cat ? escapeHtml(cat.name) : '-'}</span></td><td>${cust ? escapeHtml(cust.name) : '-'}</td><td class="text-danger">${formatCurrency(exp.amount)}</td><td>${escapeHtml(exp.expense_date)}</td><td>${exp.receipt_image ? `<img src="${exp.receipt_image}" class="img-preview" onclick="window.open(this.src)">` : '-'}</td><td>${user ? escapeHtml(user.full_name) : '-'}</td><td><button class="btn btn-sm btn-warning" onclick="window.editExpense('${exp.id}')"><i class="fas fa-edit"></i></button> ${(currentUser.role === 'admin' || exp.created_by === currentUser.uid) ? `<button class="btn btn-sm btn-danger" onclick="window.deleteExpense('${exp.id}')"><i class="fas fa-trash"></i></button>` : ''}</td></tr>`; }).join('')}</tbody></table></div><div class="pagination">${Array.from({ length: totalPages }, (_, i) => `<button class="btn btn-sm btn-outline-primary" onclick="window.renderExpenses(${i + 1},${limit}, document.getElementById('expenseUserFilter')?.value||'')">${i + 1}</button>`).join('')}</div>`; document.getElementById('searchExpense')?.addEventListener('input', e => { const term = e.target.value.toLowerCase(); document.querySelectorAll('tbody tr').forEach(row => { row.style.display = row.innerText.toLowerCase().includes(term) ? '' : 'none'; }); }); } catch (e) { showToast('فشل تحميل المصاريف', 'error'); } finally { hideLoading(); } }
+
+async function showExpenseModal(id = null) { let expense = id ? (await getStore('expenses')).find(e => e.id == id) : null; if (id && currentUser.role !== 'admin' && expense && expense.created_by !== currentUser.uid) { showToast('غير مصرح لك بتعديل هذا المصروف', 'error'); return; } const categories = await getStore('expense_categories'); const customers = await getStore('customers'); const modalHtml = `<div class="modal fade" id="expenseModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header"><h5>${expense ? 'تعديل مصروف' : 'إضافة مصروف'}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="text" id="expDesc" class="form-control mb-2" placeholder="البيان *" value="${expense ? escapeHtml(expense.description) : ''}"><select id="expCategory" class="form-control mb-2"><option value="">اختر التصنيف</option>${categories.map(c => `<option value="${c.id}" ${expense && expense.category_id == c.id ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}</select><select id="expCustomer" class="form-control mb-2"><option value="">ربط بزبون (اختياري)</option>${customers.map(c => `<option value="${c.id}" ${expense && expense.customer_id == c.id ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}</select><input type="number" id="expAmount" class="form-control mb-2" placeholder="المبلغ *" value="${expense ? fromCents(expense.amount) : ''}"><input type="date" id="expDate" class="form-control mb-2" value="${expense ? expense.expense_date : new Date().toISOString().slice(0, 10)}"><textarea id="expNotes" class="form-control mb-2" placeholder="ملاحظات">${expense ? escapeHtml(expense.notes) : ''}</textarea><label>صورة الفاتورة (اختياري)</label><input type="file" id="expReceiptImage" class="form-control mb-2" accept="image/*">${expense && expense.receipt_image ? `<img src="${expense.receipt_image}" class="img-preview mb-2">` : ''}</div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button><button class="btn btn-primary" onclick="window.saveExpense('${id || 0}')">حفظ</button></div></div></div></div>`; document.body.insertAdjacentHTML('beforeend', modalHtml); const modal = new bootstrap.Modal(document.getElementById('expenseModal')); modal.show(); document.getElementById('expenseModal').addEventListener('hidden.bs.modal', () => document.getElementById('expenseModal')?.remove()); }
+
+async function saveExpense(id) { const description = document.getElementById('expDesc').value.trim(); const amountVal = parseFloat(document.getElementById('expAmount').value); if (!description || isNaN(amountVal) || amountVal <= 0) { showToast('البيان والمبلغ مطلوبان بقيمة موجبة', 'error'); return; } const amountCents = toCents(amountVal); showLoading(); try { let receiptImage = null; const fileInput = document.getElementById('expReceiptImage'); if (fileInput && fileInput.files.length) { const file = fileInput.files[0]; receiptImage = await new Promise(resolve => { const reader = new FileReader(); reader.onload = e => resolve(e.target.result); reader.readAsDataURL(file); }); } let expenses = await getStore('expenses'); if (id !== '0') { const index = expenses.findIndex(e => e.id == id); if (index === -1) throw new Error('المصروف غير موجود'); if (currentUser.role !== 'admin' && expenses[index].created_by !== currentUser.uid) throw new Error('غير مصرح لك بتعديل هذا المصروف'); expenses[index].description = description; expenses[index].category_id = document.getElementById('expCategory').value || null; expenses[index].customer_id = document.getElementById('expCustomer').value || null; expenses[index].amount = amountCents; expenses[index].expense_date = document.getElementById('expDate').value; expenses[index].notes = document.getElementById('expNotes').value; if (receiptImage) expenses[index].receipt_image = receiptImage; expenses[index].updated_at = new Date().toISOString(); await saveStore('expenses', expenses); showToast('تم تعديل المصروف', 'success'); } else { const newExpense = { id: generateUUID(), description, category_id: document.getElementById('expCategory').value || null, customer_id: document.getElementById('expCustomer').value || null, amount: amountCents, expense_date: document.getElementById('expDate').value, notes: document.getElementById('expNotes').value, receipt_image: receiptImage, created_by: currentUser.uid, created_by_name: currentUser.email, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }; expenses.push(newExpense); await saveStore('expenses', expenses); showToast('✅ تم إضافة المصروف', 'success'); } bootstrap.Modal.getInstance(document.getElementById('expenseModal')).hide(); renderExpenses(); } catch (e) { showToast(e.message, 'error'); } finally { hideLoading(); } }
+async function editExpense(id) { showExpenseModal(id); }
+async function deleteExpense(id) { if (currentUser.role !== 'admin') { showToast('هذه العملية تتطلب صلاحيات المدير', 'error'); return; } if (!confirm('هل أنت متأكد من حذف هذا المصروف؟')) return; showLoading(); try { let expenses = await getStore('expenses'); expenses = expenses.filter(e => e.id != id); await saveStore('expenses', expenses); showToast('تم حذف المصروف', 'success'); renderExpenses(); } catch (e) { showToast(e.message, 'error'); } finally { hideLoading(); } }
+
+// ================== SYNC & SETTINGS (مع الميزات الجديدة) ==================
+async function renderSync(){ document.getElementById('content').innerHTML = `<div class="card"><div class="card-header"><h5>المزامنة مع الشريك</h5></div><div class="card-body"><button class="btn btn-primary w-100 mb-2" onclick="window.exportAllData()"><i class="fas fa-download"></i> تصدير البيانات</button><button class="btn btn-success w-100" onclick="window.importData()"><i class="fas fa-upload"></i> استيراد بيانات</button></div></div>`; }
+async function exportAllData(){ showLoading(); try{ const data = {}; const collections = ['customers','invoices','invoice_items','invoice_payments','expenses','expense_categories','settings','workshop_debts','workers','worker_advances','worker_overtime','worker_payroll_invoices','worker_absences','users']; for(let col of collections) data[col] = await getStore(col); const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `sofazi_backup_${new Date().toISOString().slice(0,19)}.json`; link.click(); showToast('✅ تم تصدير البيانات','success'); } catch(e){ showToast('فشل التصدير','error'); } finally { hideLoading(); } }
+function importData(){ if (!confirm('تحذير: سيتم استبدال جميع البيانات الحالية بالبيانات المستوردة. هل أنت متأكد؟')) return; const input = document.createElement('input'); input.type = 'file'; input.accept = 'application/json'; input.onchange = async (e)=>{ const file = e.target.files[0]; if(!file) return; showLoading(); try{ const text = await file.text(); const data = JSON.parse(text); for(let key in data){ if(data[key]) await saveStore(key, data[key]); } showToast('✅ تم استيراد البيانات','success'); loadPage('dashboard'); } catch(err){ showToast('فشل الاستيراد: '+err.message,'error'); } finally { hideLoading(); } }; input.click(); }
+
+async function renderSettings(){ 
+    showLoading(); 
+    try{ 
+        const settingsArr = await getStore('settings'); 
+        const settings = settingsArr[0] || {}; 
+        const categories = await getStore('expense_categories'); 
+        const users = await getStore('users'); 
+        
+        const isPWAInstalled = window.matchMedia('(display-mode: standalone)').matches;
+        
+        document.getElementById('content').innerHTML = `
+        <div class="card mb-3"><div class="card-header"><h5>إعدادات المؤسسة</h5></div><div class="card-body">
+            <input type="text" id="setCompanyNameAr" class="form-control mb-2" placeholder="اسم المؤسسة (عربي)" value="${escapeHtml(settings.companyNameAr||'Sofazi')}">
+            <input type="text" id="setCompanyNameFr" class="form-control mb-2" placeholder="الاسم التجاري (فرنسي)" value="${escapeHtml(settings.companyNameFr||'SOFAZI')}">
+            <input type="text" id="setLegalForm" class="form-control mb-2" placeholder="الصيغة القانونية" value="${escapeHtml(settings.legalForm||'SARL')}">
+            <input type="text" id="setCapital" class="form-control mb-2" placeholder="رأس المال" value="${escapeHtml(settings.capital||'')}">
+            <input type="text" id="setCompanyNif" class="form-control mb-2" placeholder="NIF" value="${escapeHtml(settings.companyNif||'123456789012345')}">
+            <input type="text" id="setCompanyNis" class="form-control mb-2" placeholder="NIS" value="${escapeHtml(settings.companyNis||'123456789012345')}">
+            <input type="text" id="setCompanyRc" class="form-control mb-2" placeholder="RC" value="${escapeHtml(settings.companyRc||'21 B 1234567')}">
+            <input type="text" id="setCompanyArt" class="form-control mb-2" placeholder="ART" value="${escapeHtml(settings.companyArt||'123456789012345')}">
+            <input type="text" id="setCompanyPhone" class="form-control mb-2" placeholder="الهاتف" value="${escapeHtml(settings.companyPhone||'0550 12 34 56')}">
+            <input type="text" id="setCompanyEmail" class="form-control mb-2" placeholder="البريد الإلكتروني" value="${escapeHtml(settings.companyEmail||'contact@sofazi.dz')}">
+            <textarea id="setCompanyAddr" class="form-control mb-2" placeholder="العنوان">${escapeHtml(settings.companyAddr||'Alger, Algérie')}</textarea>
+            <button class="btn btn-primary" onclick="window.saveCompanySettings()">حفظ الإعدادات</button>
+        </div></div>
+        
+        <div class="card mb-3"><div class="card-header"><h5>أدوات النظام</h5></div><div class="card-body">
+            <button class="btn btn-warning me-2" onclick="window.clearAppCache()"><i class="fas fa-trash-alt"></i> حذف الكاش وإعادة التشغيل</button>
+            ${isPWAInstalled ? 
+                '<button class="btn btn-secondary" disabled><i class="fas fa-check"></i> التطبيق مثبت (PWA)</button>' : 
+                '<button class="btn btn-success" onclick="window.installPWA()"><i class="fas fa-download"></i> تثبيت التطبيق (PWA)</button>'
+            }
+            <p class="text-muted mt-2 small">لتفعيل تثبيت PWA، افتح التطبيق عبر رابط HTTPS (مثل GitHub Pages). حذف الكاش يحل مشاكل التحديث.</p>
+        </div></div>
+        
+        <div class="card"><div class="card-header d-flex justify-content-between"><h5>تصنيفات المصروف</h5><button class="btn btn-sm btn-primary" onclick="window.showCategoryModal()"><i class="fas fa-plus"></i> إضافة تصنيف</button></div><div class="card-body"><div class="row">${categories.map(cat=>`<div class="col-md-4 mb-2"><div class="card"><div class="card-body"><span class="category-badge" style="background:${cat.color}20; color:${cat.color}">${escapeHtml(cat.name)}</span><p class="small">${escapeHtml(cat.description)}</p><button class="btn btn-sm btn-outline-primary" onclick="window.editCategory('${cat.id}')"><i class="fas fa-edit"></i></button> <button class="btn btn-sm btn-outline-danger" onclick="window.deleteCategory('${cat.id}')"><i class="fas fa-trash"></i></button></div></div></div>`).join('')}</div></div></div>
+        
+        ${currentUser.role==='admin'?`<div class="card mt-3"><div class="card-header d-flex justify-content-between"><h5>إدارة المستخدمين والصلاحيات (جميعهم مديرين)</h5><button class="btn btn-sm btn-primary" onclick="window.showUserModal()"><i class="fas fa-user-plus"></i> إضافة مدير جديد</button></div><div class="card-body"><div class="table-responsive"><table class="table"><thead><tr><th>اسم المستخدم</th><th>الاسم الكامل</th><th>الدور</th><th>الحالة</th><th></th></tr></thead><tbody>${users.map(u=>`<tr><td>${escapeHtml(u.email)}</td><td>${escapeHtml(u.full_name)}</td><td>${u.role==='admin'?'مدير':'شريك'}</td><td>${u.is_active?'نشط':'معطل'}</td><td><button class="btn btn-sm btn-warning" onclick="window.editUser('${u.id}')"><i class="fas fa-edit"></i></button> ${u.id!==users.find(admin=>admin.role==='admin')?.id?`<button class="btn btn-sm btn-danger" onclick="window.deleteUser('${u.id}')"><i class="fas fa-trash"></i></button>`:''}</td></tr>`).join('')}</tbody></table></div></div></div>`:''}
+        `; 
+    } catch(e){ showToast('فشل تحميل الإعدادات','error'); } finally { hideLoading(); 
+}}
+
+function clearAppCache() {
+    if (confirm('سيتم مسح جميع البيانات المؤقتة وإعادة تحميل التطبيق. بياناتك المحفوظة في السحابة لن تتأثر. هل تريد المتابعة؟')) {
+        localStorage.clear();
+        if ('caches' in window) {
+            caches.keys().then(names => { names.forEach(name => caches.delete(name)); });
+        }
+        if (db) {
+            db.terminate().then(() => {
+                indexedDB.deleteDatabase('firestore');
+            });
+        }
+        showToast('تم مسح الكاش. جاري إعادة التشغيل...', 'success');
+        setTimeout(() => window.location.reload(true), 1500);
+    }
+}
+
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+});
+function installPWA() {
+    if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then((choiceResult) => {
+            if (choiceResult.outcome === 'accepted') {
+                showToast('تم تثبيت التطبيق بنجاح!', 'success');
+                setTimeout(() => renderSettings(), 500);
+            }
+            deferredPrompt = null;
+        });
+    } else {
+        alert('خاصية التثبيت غير متاحة حالياً. تأكد من فتح التطبيق في متصفح Chrome أو Edge عبر رابط HTTPS (وليس ملف محلي).');
+    }
+}
+
+async function saveCompanySettings(){ showLoading(); try{ let settingsArr = await getStore('settings'); const settings = settingsArr[0] || { id: 'settings' }; settings.companyNameAr = document.getElementById('setCompanyNameAr').value; settings.companyNameFr = document.getElementById('setCompanyNameFr').value; settings.legalForm = document.getElementById('setLegalForm').value; settings.capital = document.getElementById('setCapital').value; settings.companyNif = document.getElementById('setCompanyNif').value; settings.companyNis = document.getElementById('setCompanyNis').value; settings.companyRc = document.getElementById('setCompanyRc').value; settings.companyArt = document.getElementById('setCompanyArt').value; settings.companyPhone = document.getElementById('setCompanyPhone').value; settings.companyEmail = document.getElementById('setCompanyEmail').value; settings.companyAddr = document.getElementById('setCompanyAddr').value; if(settingsArr.length===0) settingsArr.push(settings); else settingsArr[0] = settings; await saveStore('settings', settingsArr); updateTopBarCompanyName(); showToast('✅ تم حفظ الإعدادات','success'); } catch(e){ showToast(e.message,'error'); } finally { hideLoading(); } }
+
+async function showCategoryModal(id=null){ let cat = id ? (await getStore('expense_categories')).find(c=>c.id==id) : null; const modalHtml = `<div class="modal fade" id="categoryModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5>${cat?'تعديل تصنيف':'إضافة تصنيف'}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="text" id="catName" class="form-control mb-2" placeholder="اسم التصنيف *" value="${cat?escapeHtml(cat.name):''}"><input type="color" id="catColor" class="form-control form-control-color mb-2" value="${cat?.color||'#1e3a5f'}"><textarea id="catDesc" class="form-control" placeholder="وصف التصنيف">${cat?escapeHtml(cat.description):''}</textarea></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button><button class="btn btn-primary" onclick="window.saveCategory('${id||0}')">حفظ</button></div></div></div></div>`; document.body.insertAdjacentHTML('beforeend', modalHtml); const modal = new bootstrap.Modal(document.getElementById('categoryModal')); modal.show(); document.getElementById('categoryModal').addEventListener('hidden.bs.modal', () => document.getElementById('categoryModal')?.remove()); }
+async function saveCategory(id){ const name = document.getElementById('catName').value.trim(); if(!name){ showToast('اسم التصنيف مطلوب','error'); return; } showLoading(); try{ let categories = await getStore('expense_categories'); if(id !== '0'){ const index = categories.findIndex(c=>c.id==id); if(index!==-1){ categories[index].name = name; categories[index].color = document.getElementById('catColor').value; categories[index].description = document.getElementById('catDesc').value; await saveStore('expense_categories', categories); } } else { categories.push({ id: generateUUID(), name, color: document.getElementById('catColor').value, description: document.getElementById('catDesc').value }); await saveStore('expense_categories', categories); } bootstrap.Modal.getInstance(document.getElementById('categoryModal')).hide(); renderSettings(); showToast('✅ تم حفظ التصنيف','success'); } catch(e){ showToast(e.message,'error'); } finally { hideLoading(); } }
+async function editCategory(id){ showCategoryModal(id); }
+async function deleteCategory(id){ if(currentUser.role !== 'admin'){ showToast('غير مصرح','error'); return; } if(confirm('هل أنت متأكد من حذف هذا التصنيف؟')){ showLoading(); try{ let categories = await getStore('expense_categories'); categories = categories.filter(c=>c.id!=id); await saveStore('expense_categories', categories); renderSettings(); showToast('🗑️ تم حذف التصنيف','success'); } catch(e){ showToast(e.message,'error'); } finally { hideLoading(); } } }
+
+async function showUserModal(id=null){ let user = id ? (await getStore('users')).find(u=>u.id==id) : null; const modalHtml = `<div class="modal fade" id="userModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5>${user?'تعديل مدير':'إضافة مدير جديد'}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="email" id="userEmail" class="form-control mb-2" placeholder="البريد الإلكتروني *" value="${user?escapeHtml(user.email):''}"><input type="text" id="userFullName" class="form-control mb-2" placeholder="الاسم الكامل *" value="${user?escapeHtml(user.full_name):''}"><input type="password" id="userPassword" class="form-control mb-2" placeholder="كلمة المرور ${user?'(اتركها فارغة لعدم التغيير)':'*'}"></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button><button class="btn btn-primary" onclick="window.saveUser('${id||0}')">حفظ</button></div></div></div></div>`; document.body.insertAdjacentHTML('beforeend', modalHtml); const modal = new bootstrap.Modal(document.getElementById('userModal')); modal.show(); document.getElementById('userModal').addEventListener('hidden.bs.modal', () => document.getElementById('userModal')?.remove()); }
+async function saveUser(id){ if(currentUser.role !== 'admin'){ showToast('غير مصرح','error'); return; } const email = document.getElementById('userEmail').value.trim(); const fullName = document.getElementById('userFullName').value.trim(); if(!email || !fullName){ showToast('البريد الإلكتروني والاسم الكامل مطلوبان','error'); return; } showLoading(); try{ let users = await getStore('users'); if(id !== '0'){ const index = users.findIndex(u=>u.id==id); if(index===-1) throw new Error('المستخدم غير موجود'); users[index].email = email; users[index].full_name = fullName; users[index].role = 'admin'; users[index].is_active = true; const newPass = document.getElementById('userPassword').value; if(newPass) { showToast('تغيير كلمة المرور يتطلب تعديلاً يدوياً في Firebase Console', 'info'); } await saveStore('users', users); showToast('تم تعديل المدير','success'); } else { const password = document.getElementById('userPassword').value; if(!password) throw new Error('كلمة المرور مطلوبة'); if(users.find(u=>u.email===email)) throw new Error('البريد الإلكتروني موجود بالفعل'); const userCred = await auth.createUserWithEmailAndPassword(email, password); const newUser = { id: userCred.user.uid, email, full_name: fullName, role: 'admin', is_active: true, created_at: new Date().toISOString() }; users.push(newUser); await saveStore('users', users); showToast('تم إضافة المدير الجديد','success'); } bootstrap.Modal.getInstance(document.getElementById('userModal')).hide(); renderSettings(); } catch(e){ showToast(e.message,'error'); } finally { hideLoading(); } }
+async function editUser(id){ showUserModal(id); }
+async function deleteUser(id){ if(currentUser.role !== 'admin'){ showToast('غير مصرح','error'); return; } const adminUser = (await getStore('users')).find(u=>u.role==='admin'); if(id===adminUser?.id){ showToast('لا يمكن حذف المدير الرئيسي','error'); return; } if(!confirm('هل أنت متأكد من حذف هذا المستخدم؟')) return; showLoading(); try{ let users = await getStore('users'); users = users.filter(u=>u.id!=id); await saveStore('users', users); showToast('تم حذف المستخدم','success'); renderSettings(); } catch(e){ showToast(e.message,'error'); } finally { hideLoading(); } }
+
+// ================== DASHBOARD ==================
+async function renderDashboard(){ showLoading(); try{ let customers = await getStore('customers'); let invoices = await getStore('invoices'); let expenses = await getStore('expenses'); if(currentUser.role !== 'admin'){ customers = customers.filter(c=>c.created_by===currentUser.uid); invoices = invoices.filter(i=>i.created_by===currentUser.uid); expenses = expenses.filter(e=>e.created_by===currentUser.uid); } const totalRevenue = invoices.reduce((s,i)=>s+(i.paid_amount||0),0); const totalExpense = expenses.reduce((s,i)=>s+(i.amount||0),0); const profit = totalRevenue - totalExpense; const workshopDebts = await getStore('workshop_debts'); const pendingDebts = workshopDebts.filter(d=>d.remaining_amount>0).sort((a,b)=>b.remaining_amount-a.remaining_amount).slice(0,5); const recentInvoices = invoices.slice(-5).reverse(); document.getElementById('content').innerHTML = `<div class="row mb-4"><div class="col-md-3 mb-3"><div class="card stat-card primary"><div class="card-body"><h6><i class="fas fa-users"></i> الزبائن</h6><h3>${customers.length}</h3></div></div></div><div class="col-md-3 mb-3"><div class="card stat-card success"><div class="card-body"><h6><i class="fas fa-dollar-sign"></i> الإيرادات</h6><h3>${formatCurrency(totalRevenue)}</h3></div></div></div><div class="col-md-3 mb-3"><div class="card stat-card danger"><div class="card-body"><h6><i class="fas fa-chart-line"></i> المصاريف</h6><h3>${formatCurrency(totalExpense)}</h3></div></div></div><div class="col-md-3 mb-3"><div class="card stat-card warning"><div class="card-body"><h6><i class="fas fa-chart-pie"></i> صافي الربح</h6><h3>${formatCurrency(profit)}</h3></div></div></div></div><div class="row"><div class="col-md-6"><div class="card"><div class="card-header bg-transparent fw-bold">🏭 ديون الورشة</div><div class="card-body">${pendingDebts.map(d=>`<div class="d-flex justify-content-between border-bottom py-1"><span>${escapeHtml(d.name)}</span><span class="text-danger">${formatCurrency(d.remaining_amount)}</span></div>`).join('')||'<div class="text-muted">لا توجد ديون</div>'}</div></div></div><div class="col-md-6"><div class="card"><div class="card-header bg-transparent fw-bold">📄 آخر الفواتير</div><div class="card-body">${recentInvoices.map(i=>`<div class="d-flex justify-content-between py-1"><span>${escapeHtml(i.invoice_number)}</span><span>${formatCurrency(i.total_amount)}</span></div>`).join('')||'<div class="text-muted">لا توجد فواتير</div>'}</div></div></div></div>`; } catch(e){ showToast('فشل تحميل لوحة التحكم','error'); } finally { hideLoading(); } }
+
+// ================== NAVIGATION ==================
+async function loadPage(page){ if(!currentUser){ showLogin(); return; } document.getElementById('sidebar').classList.remove('open'); switch(page){ case 'dashboard': await renderDashboard(); break; case 'customers': await renderCustomers(); break; case 'invoices': await renderInvoices(); break; case 'invoicesList': await renderInvoicesList(); break; case 'workshopDebts': await renderWorkshopDebts(); break; case 'workers': await renderWorkers(); break; case 'expenses': await renderExpenses(); break; case 'sync': await renderSync(); break; case 'settings': await renderSettings(); break; default: await renderDashboard(); } document.querySelectorAll('.sidebar a').forEach(link=>{ link.classList.remove('active'); if(link.getAttribute('data-page')===page) link.classList.add('active'); }); }
+
+function updateTopBarCompanyName() { (async () => { const settings = await getStore('settings'); if (settings.length > 0 && settings[0].companyNameAr) { document.getElementById('companyNameTop').innerHTML = `${escapeHtml(settings[0].companyNameAr)} <span style="font-size:0.7rem;">v1.0</span>`; } })(); }
+
+// ================== FIREBASE SETUP HANDLER (مع كود افتراضي) ==================
+function setupFirebase() {
+    let savedConfig = localStorage.getItem('firebaseConfig');
+    if (!savedConfig) {
+        // الإعدادات الافتراضية لمشروع Sofazi
+        const defaultConfig = {
+            apiKey: "AIzaSyCsbMKBCYUACO-8-fbJv4SPLClrL-tFoGo",
+            authDomain: "sofazi.firebaseapp.com",
+            projectId: "sofazi",
+            storageBucket: "sofazi.firebasestorage.app",
+            messagingSenderId: "481028905576",
+            appId: "1:481028905576:web:174a0da0566dea134779dd",
+            measurementId: "G-3MT9K98E5V"
+        };
+        savedConfig = JSON.stringify(defaultConfig);
+        localStorage.setItem('firebaseConfig', savedConfig);
+    }
+    try {
+        const config = JSON.parse(savedConfig);
+        firebase.initializeApp(config);
+        db = firebase.firestore();
+        auth = firebase.auth();
+        // تفعيل التخزين المؤقت (قد يسبب مشاكل على بعض الهواتف، لذا نضعه في try)
+        try {
+            db.enablePersistence().catch(err => { if (err.code == 'failed-precondition') console.warn('تعدد التبويبات'); });
+        } catch(e) {}
+        firebaseInitialized = true;
+        restoreSession();
+        return;
+    } catch(e) { console.error(e); }
+    // إذا فشل التهيئة، نظهر شاشة التهيئة اليدوية
+    document.body.classList.add('login-active');
+    document.getElementById('content').innerHTML = `
+        <div class="firebase-setup-container"><div class="card firebase-setup-card"><div class="card-body p-4">
+            <h4 class="text-center mb-3">🔧 تهيئة Firebase</h4>
+            <p class="text-muted small">الصق إعدادات مشروع Firebase (من Console)</p>
+            <textarea id="firebaseConfigInput" class="form-control mb-3" rows="8" placeholder='${escapeHtml(savedConfig)}'></textarea>
+            <button class="btn btn-primary w-100" id="saveFirebaseBtn">حفظ وبدء التشغيل</button>
+        </div></div></div>
+    `;
+    document.getElementById('saveFirebaseBtn').addEventListener('click', () => {
+        try {
+            const cfg = document.getElementById('firebaseConfigInput').value;
+            localStorage.setItem('firebaseConfig', cfg);
+            location.reload();
+        } catch(e) { showToast('خطأ في التنسيق', 'error'); }
+    });
+}
+
+// ================== EXPORT GLOBALS ==================
+window.renderCustomers=renderCustomers; window.renderInvoices=renderInvoices; window.renderInvoicesList=renderInvoicesList; window.renderWorkshopDebts=renderWorkshopDebts; window.renderWorkers=renderWorkers; window.renderExpenses=renderExpenses; window.renderSync=renderSync; window.renderSettings=renderSettings; window.renderDashboard=renderDashboard; window.loadPage=loadPage;
+window.showCustomerModal=showCustomerModal; window.saveCustomer=saveCustomer; window.viewCustomer=viewCustomer; window.showCustomerPayments=showCustomerPayments; window.addCustomerPayment=addCustomerPayment; window.saveCustomerPayment=saveCustomerPayment; window.deletePayment=deletePayment;
+window.editInvoice=editInvoice; window.deleteInvoice=deleteInvoice; window.viewInvoiceDetail=viewInvoiceDetail;
+window.showWorkshopDebtModal=showWorkshopDebtModal; window.saveWorkshopDebt=saveWorkshopDebt; window.addWorkshopDebtPayment=addWorkshopDebtPayment; window.saveWorkshopDebtPayment=saveWorkshopDebtPayment; window.deleteWorkshopDebt=deleteWorkshopDebt;
+window.showWorkerModal=showWorkerModal; window.saveWorker=saveWorker; window.showWorkerDetails=showWorkerDetails; window.addWorkerAdvance=addWorkerAdvance; window.saveWorkerAdvance=saveWorkerAdvance; window.addWorkerOvertime=addWorkerOvertime; window.saveWorkerOvertime=saveWorkerOvertime; window.addWorkerAbsence=addWorkerAbsence; window.saveWorkerAbsence=saveWorkerAbsence; window.generateWorkerPayroll=generateWorkerPayroll; window.showFinancialArchive=showFinancialArchive;
+window.showExpenseModal=showExpenseModal; window.saveExpense=saveExpense; window.editExpense=editExpense; window.deleteExpense=deleteExpense;
+window.exportAllData=exportAllData; window.importData=importData;
+window.saveCompanySettings=saveCompanySettings; window.showCategoryModal=showCategoryModal; window.saveCategory=saveCategory; window.editCategory=editCategory; window.deleteCategory=deleteCategory;
+window.showUserModal=showUserModal; window.saveUser=saveUser; window.editUser=editUser; window.deleteUser=deleteUser;
+window.clearAppCache=clearAppCache; window.installPWA=installPWA;
+
+// ================== EVENT LISTENERS ==================
+document.getElementById('menuToggle').addEventListener('click', e=>{ e.stopPropagation(); document.getElementById('sidebar').classList.toggle('open'); });
+document.addEventListener('click', function(event){ const sidebar = document.getElementById('sidebar'); const menuToggle = document.getElementById('menuToggle'); if(sidebar.classList.contains('open') && !sidebar.contains(event.target) && event.target!==menuToggle && !menuToggle.contains(event.target)) sidebar.classList.remove('open'); });
+document.getElementById('logoutBtn').addEventListener('click', logout);
+document.getElementById('darkModeToggle').addEventListener('click', async ()=>{ document.body.classList.toggle('dark-mode'); const settingsArr = await getStore('settings'); if(settingsArr.length){ settingsArr[0].darkMode = document.body.classList.contains('dark-mode'); await saveStore('settings', settingsArr); } });
+document.querySelectorAll('.sidebar a').forEach(link=>{ link.addEventListener('click', (e)=>{ e.preventDefault(); const page = link.getAttribute('data-page'); if(page) loadPage(page); }); });
+
+setupFirebase();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
