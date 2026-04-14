@@ -3,9 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Sofazi v1.0 - النظام المركزي</title>
-    <!-- PWA manifest -->
-    <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22Sofazi%22%2C%22short_name%22%3A%22Sofazi%22%2C%22display%22%3A%22standalone%22%2C%22theme_color%22%3A%22%231e3a5f%22%2C%22background_color%22%3A%22%23f0f2f5%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22https%3A%2F%2Fcdn.jsdelivr.net%2Fnpm%2Fbootstrap-icons%401.11.1%2Ficons%2Fbox-seam.svg%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
+    <title>Sofazi v1.1 - النظام المركزي</title>
+    <!-- أيقونة SVG للتطبيق (لوجو) -->
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%231e3a5f'/%3E%3Ctext x='50' y='68' font-size='50' text-anchor='middle' fill='white' font-family='Arial' font-weight='bold'%3ES%3C/text%3E%3C/svg%3E" type="image/svg+xml">
+    <!-- PWA manifest مع الأيقونة -->
+    <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22Sofazi%22%2C%22short_name%22%3A%22Sofazi%22%2C%22display%22%3A%22standalone%22%2C%22theme_color%22%3A%22%231e3a5f%22%2C%22background_color%22%3A%22%23f0f2f5%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D'http%253A%2F%2Fwww.w3.org%2F2000%2Fsvg'%2520viewBox%253D'0%25200%2520100%2520100'%253E%253Crect%2520width%253D'100'%2520height%253D'100'%2520rx%253D'20'%2520fill%253D'%25231e3a5f'%2F%253E%253Ctext%2520x%253D'50'%2520y%253D'68'%2520font-size%253D'50'%2520text-anchor%253D'middle'%2520fill%253D'white'%2520font-family%253D'Arial'%2520font-weight%253D'bold'%253ES%253C%2Ftext%253E%253C%2Fsvg%253E%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
     <!-- Bootstrap & Font Awesome -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -83,6 +85,7 @@
         .company-name-top { font-size: 1.1rem; font-weight: 500; }
         .firebase-setup-container { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #1e3a5f; }
         .firebase-setup-card { max-width: 600px; margin: 20px; }
+        .accordion-button:not(.collapsed) { background-color: #e9ecef; }
     </style>
 </head>
 <body>
@@ -109,7 +112,7 @@
 
 <div class="top-bar">
     <button class="menu-btn" id="menuToggle"><i class="fas fa-bars"></i></button>
-    <h5 class="m-0 company-name-top" id="companyNameTop">Sofazi <span style="font-size:0.7rem;">v1.0</span></h5>
+    <h5 class="m-0 company-name-top" id="companyNameTop">Sofazi <span style="font-size:0.7rem;">v1.1</span></h5>
     <button class="dark-mode-toggle" id="darkModeToggle"><i class="fas fa-moon"></i></button>
 </div>
 
@@ -130,6 +133,7 @@ let db, auth;
 let firebaseInitialized = false;
 let currentUser = null;
 let invoiceItems = [];
+let autoBackupInterval = null;
 
 // ================== UTILITIES ==================
 function toCents(amount) { return Math.round(amount * 100); }
@@ -148,11 +152,12 @@ let loadingCount = 0;
 function showLoading() { loadingCount++; let ov = document.getElementById('loadingOverlay'); if(!ov) { ov = document.createElement('div'); ov.id = 'loadingOverlay'; ov.className = 'loading-overlay'; ov.innerHTML = '<div class="spinner-border text-light"></div>'; document.body.appendChild(ov); } ov.style.display = 'flex'; }
 function hideLoading() { loadingCount--; if(loadingCount <= 0) { const ov = document.getElementById('loadingOverlay'); if(ov) ov.style.display = 'none'; loadingCount = 0; } }
 
-// ================== FIRESTORE WRAPPERS ==================
+// ================== FIRESTORE WRAPPERS (مع دعم shared) ==================
 async function getStore(collectionName) {
     if (!firebaseInitialized) return [];
     try {
-        const snapshot = await db.collection(collectionName).where("userId", "in", [currentUser?.uid || "all", "shared"]).get();
+        const snapshot = await db.collection(collectionName)
+            .where("userId", "in", [currentUser?.uid || "all", "shared"]).get();
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     } catch (e) { console.warn('getStore error:', e); return []; }
 }
@@ -167,17 +172,65 @@ async function saveStore(collectionName, dataArray) {
     });
     await batch.commit();
 }
+// دوال خاصة للبيانات المشتركة (shared)
+async function saveSharedSettings(settings) {
+    if (!firebaseInitialized) return;
+    const ref = db.collection('settings').doc('shared');
+    await ref.set({ ...settings, userId: 'shared', updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+}
+async function getSharedSettings() {
+    if (!firebaseInitialized) return null;
+    const doc = await db.collection('settings').doc('shared').get();
+    return doc.exists ? doc.data() : null;
+}
+async function saveSharedCategories(categories) {
+    if (!firebaseInitialized) return;
+    const batch = db.batch();
+    const existing = await db.collection('expense_categories').where("userId", "==", "shared").get();
+    existing.forEach(doc => batch.delete(doc.ref));
+    categories.forEach(cat => {
+        const ref = db.collection('expense_categories').doc(cat.id || generateUUID());
+        batch.set(ref, { ...cat, userId: 'shared' });
+    });
+    await batch.commit();
+}
+async function getSharedCategories() {
+    if (!firebaseInitialized) return [];
+    const snapshot = await db.collection('expense_categories').where("userId", "==", "shared").get();
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+}
 
-// ================== INIT DEFAULT DATA ==================
+// ================== AUTO BACKUP (كل 5 ساعات) ==================
+async function performAutoBackup() {
+    if (!currentUser) return;
+    try {
+        const data = {};
+        const collections = ['customers','invoices','invoice_items','invoice_payments','expenses','workshop_debts','workers','worker_advances','worker_overtime','worker_absences','worker_payroll_invoices'];
+        for(let col of collections) data[col] = await getStore(col);
+        data['settings'] = [await getSharedSettings()];
+        data['expense_categories'] = await getSharedCategories();
+        data['users'] = [];
+        const blob = new Blob([JSON.stringify(data,null,2)], {type: 'application/json'});
+        localStorage.setItem('sofazi_autobackup', JSON.stringify({ timestamp: new Date().toISOString(), data: data }));
+        console.log('Auto backup saved');
+    } catch(e) { console.warn('Auto backup failed:', e); }
+}
+function startAutoBackup() {
+    if (autoBackupInterval) clearInterval(autoBackupInterval);
+    autoBackupInterval = setInterval(() => performAutoBackup(), 5 * 60 * 60 * 1000);
+    performAutoBackup();
+}
+
+// ================== INIT DEFAULT DATA (مشتركة) ==================
 async function initDefaultData() {
     if (!firebaseInitialized) return;
-    const settingsSnap = await db.collection('settings').where("userId", "==", currentUser.uid).get();
-    if (settingsSnap.empty) {
-        const defaultSettings = { id: 'settings', darkMode: false, invoiceCounter: 1, companyNameAr: 'Sofazi', companyNameFr: 'SOFAZI', legalForm: 'SARL', capital: '100,000 DA', companyNif: '123456789012345', companyNis: '123456789012345', companyRc: '21 B 1234567', companyArt: '123456789012345', companyPhone: '0550 12 34 56', companyEmail: 'contact@sofazi.dz', companyAddr: 'Alger, Algérie' };
-        await db.collection('settings').doc(defaultSettings.id).set({ ...defaultSettings, userId: currentUser.uid });
+    const sharedSettings = await getSharedSettings();
+    if (!sharedSettings) {
+        const defaultSettings = { darkMode: false, invoiceCounter: 1, companyNameAr: 'Sofazi', companyNameFr: 'SOFAZI', legalForm: 'SARL', capital: '100,000 DA', companyNif: '123456789012345', companyNis: '123456789012345', companyRc: '21 B 1234567', companyArt: '123456789012345', companyPhone: '0550 12 34 56', companyEmail: 'contact@sofazi.dz', companyAddr: 'Alger, Algérie' };
+        await saveSharedSettings(defaultSettings);
     }
-    const catSnap = await db.collection('expense_categories').where("userId", "==", currentUser.uid).get();
-    if (catSnap.empty) {
+    const sharedCats = await getSharedCategories();
+    if (sharedCats.length === 0) {
         const cats = [
             { id: generateUUID(), name: 'إيجار', color: '#dc2626' },
             { id: generateUUID(), name: 'كهرباء', color: '#f59e0b' },
@@ -185,13 +238,11 @@ async function initDefaultData() {
             { id: generateUUID(), name: 'أدوات', color: '#3b82f6' },
             { id: generateUUID(), name: 'ديون ورشة', color: '#8b5cf6' }
         ];
-        const batch = db.batch();
-        cats.forEach(c => { const ref = db.collection('expense_categories').doc(c.id); batch.set(ref, { ...c, userId: currentUser.uid }); });
-        await batch.commit();
+        await saveSharedCategories(cats);
     }
 }
 
-// ================== AUTHENTICATION (مع إمكانية التسجيل) ==================
+// ================== AUTHENTICATION ==================
 async function doLogin(email, password) {
     showLoading();
     try {
@@ -212,6 +263,7 @@ async function doLogin(email, password) {
         await initDefaultData();
         updateTopBarCompanyName();
         loadPage('dashboard');
+        startAutoBackup();
         showToast(`مرحباً ${fullName}`, 'success');
     } catch(err) { showToast(err.message, 'error'); } finally { hideLoading(); }
 }
@@ -228,12 +280,14 @@ async function doRegister(email, password, fullName) {
         await initDefaultData();
         updateTopBarCompanyName();
         loadPage('dashboard');
+        startAutoBackup();
         showToast(`تم إنشاء الحساب بنجاح، مرحباً ${fullName}`, 'success');
     } catch(err) { showToast(err.message, 'error'); } finally { hideLoading(); }
 }
 
 async function logout() {
     if (!confirm('هل أنت متأكد من تسجيل الخروج؟')) return;
+    if (autoBackupInterval) clearInterval(autoBackupInterval);
     await auth.signOut();
     currentUser = null;
     document.body.classList.add('login-active');
@@ -253,6 +307,7 @@ async function restoreSession() {
                 document.body.classList.remove('login-active');
                 updateTopBarCompanyName();
                 loadPage('dashboard');
+                startAutoBackup();
                 resolve(true);
             } else {
                 document.body.classList.add('login-active');
@@ -265,54 +320,26 @@ async function restoreSession() {
 
 function showLogin() {
     document.getElementById('content').innerHTML = `
-        <div class="login-container">
-            <div class="card login-card">
-                <div class="card-body p-4">
-                    <div class="text-center mb-4">
-                        <i class="fas fa-industry fa-4x text-primary mb-3"></i>
-                        <h3 class="fw-bold">Sofazi</h3>
-                        <p class="text-muted">النظام المركزي للإدارة</p>
-                    </div>
-                    <ul class="nav nav-tabs mb-3" id="authTabs" role="tablist">
-                        <li class="nav-item w-50" role="presentation">
-                            <button class="nav-link active w-100" id="login-tab" data-bs-toggle="tab" data-bs-target="#login" type="button" role="tab">دخول</button>
-                        </li>
-                        <li class="nav-item w-50" role="presentation">
-                            <button class="nav-link w-100" id="register-tab" data-bs-toggle="tab" data-bs-target="#register" type="button" role="tab">حساب جديد</button>
-                        </li>
-                    </ul>
-                    <div class="tab-content">
-                        <div class="tab-pane fade show active" id="login" role="tabpanel">
-                            <div class="mb-3">
-                                <label class="form-label">البريد الإلكتروني</label>
-                                <input type="email" id="loginUser" class="form-control form-control-lg" placeholder="example@company.com">
-                            </div>
-                            <div class="mb-4">
-                                <label class="form-label">كلمة المرور</label>
-                                <input type="password" id="loginPass" class="form-control form-control-lg" placeholder="********">
-                            </div>
-                            <button class="btn btn-primary btn-lg w-100 py-2" id="loginBtn"><i class="fas fa-sign-in-alt me-2"></i> دخول</button>
-                            <p class="mt-3 small text-muted text-center">أول مستخدم: admin@example.com / admin123</p>
-                        </div>
-                        <div class="tab-pane fade" id="register" role="tabpanel">
-                            <div class="mb-3">
-                                <label class="form-label">الاسم الكامل</label>
-                                <input type="text" id="regFullName" class="form-control form-control-lg" placeholder="محمد أمين">
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">البريد الإلكتروني</label>
-                                <input type="email" id="regEmail" class="form-control form-control-lg" placeholder="example@company.com">
-                            </div>
-                            <div class="mb-4">
-                                <label class="form-label">كلمة المرور</label>
-                                <input type="password" id="regPass" class="form-control form-control-lg" placeholder="********">
-                            </div>
-                            <button class="btn btn-success btn-lg w-100 py-2" id="registerBtn"><i class="fas fa-user-plus me-2"></i> إنشاء حساب</button>
-                        </div>
-                    </div>
+        <div class="login-container"><div class="card login-card"><div class="card-body p-4">
+            <div class="text-center mb-4"><i class="fas fa-industry fa-4x text-primary mb-3"></i><h3 class="fw-bold">Sofazi</h3><p class="text-muted">النظام المركزي للإدارة</p></div>
+            <ul class="nav nav-tabs mb-3" id="authTabs" role="tablist">
+                <li class="nav-item w-50"><button class="nav-link active w-100" data-bs-toggle="tab" data-bs-target="#login">دخول</button></li>
+                <li class="nav-item w-50"><button class="nav-link w-100" data-bs-toggle="tab" data-bs-target="#register">حساب جديد</button></li>
+            </ul>
+            <div class="tab-content">
+                <div class="tab-pane fade show active" id="login">
+                    <div class="mb-3"><label>البريد</label><input type="email" id="loginUser" class="form-control"></div>
+                    <div class="mb-4"><label>كلمة المرور</label><input type="password" id="loginPass" class="form-control"></div>
+                    <button class="btn btn-primary w-100" id="loginBtn">دخول</button>
+                </div>
+                <div class="tab-pane fade" id="register">
+                    <div class="mb-3"><label>الاسم الكامل</label><input type="text" id="regFullName" class="form-control"></div>
+                    <div class="mb-3"><label>البريد</label><input type="email" id="regEmail" class="form-control"></div>
+                    <div class="mb-4"><label>كلمة المرور</label><input type="password" id="regPass" class="form-control"></div>
+                    <button class="btn btn-success w-100" id="registerBtn">إنشاء حساب</button>
                 </div>
             </div>
-        </div>
+        </div></div></div>
     `;
     document.getElementById('loginBtn').addEventListener('click', () => {
         const email = document.getElementById('loginUser').value;
@@ -327,7 +354,6 @@ function showLogin() {
         if (pass.length < 6) { showToast('كلمة المرور يجب أن تكون 6 أحرف على الأقل', 'error'); return; }
         doRegister(email, pass, fullName);
     });
-    document.getElementById('loginPass')?.addEventListener('keypress', (e) => { if (e.key === 'Enter') document.getElementById('loginBtn').click(); });
 }
 
 // ================== UPDATE CUSTOMER TOTALS ==================
@@ -889,9 +915,9 @@ async function showFinancialArchive() {
 }
 
 // ================== EXPENSES (كامل) ==================
-async function renderExpenses(page = 1, limit = 10, filterUserId = '') { showLoading(); try { let expenses = await getStore('expenses'); if (currentUser.role !== 'admin') { expenses = expenses.filter(e => e.created_by === currentUser.uid); } else if (filterUserId) { expenses = expenses.filter(e => e.created_by == filterUserId); } const total = expenses.length, totalPages = Math.ceil(total / limit); const paginated = expenses.slice((page - 1) * limit, page * limit); const categories = await getStore('expense_categories'); const customers = await getStore('customers'); const users = await getStore('users'); const userOptions = users.map(u => `<option value="${u.id}" ${filterUserId == u.id ? 'selected' : ''}>${escapeHtml(u.full_name)}</option>`).join(''); document.getElementById('content').innerHTML = `<div class="d-flex justify-content-between align-items-center mb-4"><h4><i class="fas fa-money-bill-wave"></i> المصاريف</h4><button class="btn btn-primary" onclick="window.showExpenseModal()"><i class="fas fa-plus"></i> مصروف جديد</button></div><div class="filter-bar">${currentUser.role === 'admin' ? `<select id="expenseUserFilter" class="form-control w-auto" onchange="window.renderExpenses(1,10,this.value)"><option value="">كل المستخدمين</option>${userOptions}</select>` : ''}<input type="text" id="searchExpense" class="form-control" placeholder="بحث بالبيان..."></div><div class="table-responsive"><table class="table table-hover"><thead><tr><th>البيان</th><th>التصنيف</th><th>الزبون</th><th>المبلغ</th><th>التاريخ</th><th>الصورة</th><th>المستخدم</th><th></th></tr></thead><tbody>${paginated.map(exp => { const cat = categories.find(c => c.id == exp.category_id); const cust = customers.find(c => c.id == exp.customer_id); const user = users.find(u => u.id == exp.created_by); return `<tr><td>${escapeHtml(exp.description)}</td><td><span class="category-badge" style="background:${cat?.color || '#ccc'}20; color:${cat?.color || '#000'}">${cat ? escapeHtml(cat.name) : '-'}</span></td><td>${cust ? escapeHtml(cust.name) : '-'}</td><td class="text-danger">${formatCurrency(exp.amount)}</td><td>${escapeHtml(exp.expense_date)}</td><td>${exp.receipt_image ? `<img src="${exp.receipt_image}" class="img-preview" onclick="window.open(this.src)">` : '-'}</td><td>${user ? escapeHtml(user.full_name) : '-'}</td><td><button class="btn btn-sm btn-warning" onclick="window.editExpense('${exp.id}')"><i class="fas fa-edit"></i></button> ${(currentUser.role === 'admin' || exp.created_by === currentUser.uid) ? `<button class="btn btn-sm btn-danger" onclick="window.deleteExpense('${exp.id}')"><i class="fas fa-trash"></i></button>` : ''}</td></tr>`; }).join('')}</tbody></table></div><div class="pagination">${Array.from({ length: totalPages }, (_, i) => `<button class="btn btn-sm btn-outline-primary" onclick="window.renderExpenses(${i + 1},${limit}, document.getElementById('expenseUserFilter')?.value||'')">${i + 1}</button>`).join('')}</div>`; document.getElementById('searchExpense')?.addEventListener('input', e => { const term = e.target.value.toLowerCase(); document.querySelectorAll('tbody tr').forEach(row => { row.style.display = row.innerText.toLowerCase().includes(term) ? '' : 'none'; }); }); } catch (e) { showToast('فشل تحميل المصاريف', 'error'); } finally { hideLoading(); } }
+async function renderExpenses(page = 1, limit = 10, filterUserId = '') { showLoading(); try { let expenses = await getStore('expenses'); if (currentUser.role !== 'admin') { expenses = expenses.filter(e => e.created_by === currentUser.uid); } else if (filterUserId) { expenses = expenses.filter(e => e.created_by == filterUserId); } const total = expenses.length, totalPages = Math.ceil(total / limit); const paginated = expenses.slice((page - 1) * limit, page * limit); const categories = await getSharedCategories(); const customers = await getStore('customers'); const users = await getStore('users'); const userOptions = users.map(u => `<option value="${u.id}" ${filterUserId == u.id ? 'selected' : ''}>${escapeHtml(u.full_name)}</option>`).join(''); document.getElementById('content').innerHTML = `<div class="d-flex justify-content-between align-items-center mb-4"><h4><i class="fas fa-money-bill-wave"></i> المصاريف</h4><button class="btn btn-primary" onclick="window.showExpenseModal()"><i class="fas fa-plus"></i> مصروف جديد</button></div><div class="filter-bar">${currentUser.role === 'admin' ? `<select id="expenseUserFilter" class="form-control w-auto" onchange="window.renderExpenses(1,10,this.value)"><option value="">كل المستخدمين</option>${userOptions}</select>` : ''}<input type="text" id="searchExpense" class="form-control" placeholder="بحث بالبيان..."></div><div class="table-responsive"><table class="table table-hover"><thead><tr><th>البيان</th><th>التصنيف</th><th>الزبون</th><th>المبلغ</th><th>التاريخ</th><th>الصورة</th><th>المستخدم</th><th></th></tr></thead><tbody>${paginated.map(exp => { const cat = categories.find(c => c.id == exp.category_id); const cust = customers.find(c => c.id == exp.customer_id); const user = users.find(u => u.id == exp.created_by); return `<tr><td>${escapeHtml(exp.description)}</td><td><span class="category-badge" style="background:${cat?.color || '#ccc'}20; color:${cat?.color || '#000'}">${cat ? escapeHtml(cat.name) : '-'}</span></td><td>${cust ? escapeHtml(cust.name) : '-'}</td><td class="text-danger">${formatCurrency(exp.amount)}</td><td>${escapeHtml(exp.expense_date)}</td><td>${exp.receipt_image ? `<img src="${exp.receipt_image}" class="img-preview" onclick="window.open(this.src)">` : '-'}</td><td>${user ? escapeHtml(user.full_name) : '-'}</td><td><button class="btn btn-sm btn-warning" onclick="window.editExpense('${exp.id}')"><i class="fas fa-edit"></i></button> ${(currentUser.role === 'admin' || exp.created_by === currentUser.uid) ? `<button class="btn btn-sm btn-danger" onclick="window.deleteExpense('${exp.id}')"><i class="fas fa-trash"></i></button>` : ''}</td></tr>`; }).join('')}</tbody></table></div><div class="pagination">${Array.from({ length: totalPages }, (_, i) => `<button class="btn btn-sm btn-outline-primary" onclick="window.renderExpenses(${i + 1},${limit}, document.getElementById('expenseUserFilter')?.value||'')">${i + 1}</button>`).join('')}</div>`; document.getElementById('searchExpense')?.addEventListener('input', e => { const term = e.target.value.toLowerCase(); document.querySelectorAll('tbody tr').forEach(row => { row.style.display = row.innerText.toLowerCase().includes(term) ? '' : 'none'; }); }); } catch (e) { showToast('فشل تحميل المصاريف', 'error'); } finally { hideLoading(); } }
 
-async function showExpenseModal(id = null) { let expense = id ? (await getStore('expenses')).find(e => e.id == id) : null; if (id && currentUser.role !== 'admin' && expense && expense.created_by !== currentUser.uid) { showToast('غير مصرح لك بتعديل هذا المصروف', 'error'); return; } const categories = await getStore('expense_categories'); const customers = await getStore('customers'); const modalHtml = `<div class="modal fade" id="expenseModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header"><h5>${expense ? 'تعديل مصروف' : 'إضافة مصروف'}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="text" id="expDesc" class="form-control mb-2" placeholder="البيان *" value="${expense ? escapeHtml(expense.description) : ''}"><select id="expCategory" class="form-control mb-2"><option value="">اختر التصنيف</option>${categories.map(c => `<option value="${c.id}" ${expense && expense.category_id == c.id ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}</select><select id="expCustomer" class="form-control mb-2"><option value="">ربط بزبون (اختياري)</option>${customers.map(c => `<option value="${c.id}" ${expense && expense.customer_id == c.id ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}</select><input type="number" id="expAmount" class="form-control mb-2" placeholder="المبلغ *" value="${expense ? fromCents(expense.amount) : ''}"><input type="date" id="expDate" class="form-control mb-2" value="${expense ? expense.expense_date : new Date().toISOString().slice(0, 10)}"><textarea id="expNotes" class="form-control mb-2" placeholder="ملاحظات">${expense ? escapeHtml(expense.notes) : ''}</textarea><label>صورة الفاتورة (اختياري)</label><input type="file" id="expReceiptImage" class="form-control mb-2" accept="image/*">${expense && expense.receipt_image ? `<img src="${expense.receipt_image}" class="img-preview mb-2">` : ''}</div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button><button class="btn btn-primary" onclick="window.saveExpense('${id || 0}')">حفظ</button></div></div></div></div>`; document.body.insertAdjacentHTML('beforeend', modalHtml); const modal = new bootstrap.Modal(document.getElementById('expenseModal')); modal.show(); document.getElementById('expenseModal').addEventListener('hidden.bs.modal', () => document.getElementById('expenseModal')?.remove()); }
+async function showExpenseModal(id = null) { let expense = id ? (await getStore('expenses')).find(e => e.id == id) : null; if (id && currentUser.role !== 'admin' && expense && expense.created_by !== currentUser.uid) { showToast('غير مصرح لك بتعديل هذا المصروف', 'error'); return; } const categories = await getSharedCategories(); const customers = await getStore('customers'); const modalHtml = `<div class="modal fade" id="expenseModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header"><h5>${expense ? 'تعديل مصروف' : 'إضافة مصروف'}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="text" id="expDesc" class="form-control mb-2" placeholder="البيان *" value="${expense ? escapeHtml(expense.description) : ''}"><select id="expCategory" class="form-control mb-2"><option value="">اختر التصنيف</option>${categories.map(c => `<option value="${c.id}" ${expense && expense.category_id == c.id ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}</select><select id="expCustomer" class="form-control mb-2"><option value="">ربط بزبون (اختياري)</option>${customers.map(c => `<option value="${c.id}" ${expense && expense.customer_id == c.id ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}</select><input type="number" id="expAmount" class="form-control mb-2" placeholder="المبلغ *" value="${expense ? fromCents(expense.amount) : ''}"><input type="date" id="expDate" class="form-control mb-2" value="${expense ? expense.expense_date : new Date().toISOString().slice(0, 10)}"><textarea id="expNotes" class="form-control mb-2" placeholder="ملاحظات">${expense ? escapeHtml(expense.notes) : ''}</textarea><label>صورة الفاتورة (اختياري)</label><input type="file" id="expReceiptImage" class="form-control mb-2" accept="image/*">${expense && expense.receipt_image ? `<img src="${expense.receipt_image}" class="img-preview mb-2">` : ''}</div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button><button class="btn btn-primary" onclick="window.saveExpense('${id || 0}')">حفظ</button></div></div></div></div>`; document.body.insertAdjacentHTML('beforeend', modalHtml); const modal = new bootstrap.Modal(document.getElementById('expenseModal')); modal.show(); document.getElementById('expenseModal').addEventListener('hidden.bs.modal', () => document.getElementById('expenseModal')?.remove()); }
 
 async function saveExpense(id) { const description = document.getElementById('expDesc').value.trim(); const amountVal = parseFloat(document.getElementById('expAmount').value); if (!description || isNaN(amountVal) || amountVal <= 0) { showToast('البيان والمبلغ مطلوبان بقيمة موجبة', 'error'); return; } const amountCents = toCents(amountVal); showLoading(); try { let receiptImage = null; const fileInput = document.getElementById('expReceiptImage'); if (fileInput && fileInput.files.length) { const file = fileInput.files[0]; receiptImage = await new Promise(resolve => { const reader = new FileReader(); reader.onload = e => resolve(e.target.result); reader.readAsDataURL(file); }); } let expenses = await getStore('expenses'); if (id !== '0') { const index = expenses.findIndex(e => e.id == id); if (index === -1) throw new Error('المصروف غير موجود'); if (currentUser.role !== 'admin' && expenses[index].created_by !== currentUser.uid) throw new Error('غير مصرح لك بتعديل هذا المصروف'); expenses[index].description = description; expenses[index].category_id = document.getElementById('expCategory').value || null; expenses[index].customer_id = document.getElementById('expCustomer').value || null; expenses[index].amount = amountCents; expenses[index].expense_date = document.getElementById('expDate').value; expenses[index].notes = document.getElementById('expNotes').value; if (receiptImage) expenses[index].receipt_image = receiptImage; expenses[index].updated_at = new Date().toISOString(); await saveStore('expenses', expenses); showToast('تم تعديل المصروف', 'success'); } else { const newExpense = { id: generateUUID(), description, category_id: document.getElementById('expCategory').value || null, customer_id: document.getElementById('expCustomer').value || null, amount: amountCents, expense_date: document.getElementById('expDate').value, notes: document.getElementById('expNotes').value, receipt_image: receiptImage, created_by: currentUser.uid, created_by_name: currentUser.email, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }; expenses.push(newExpense); await saveStore('expenses', expenses); showToast('✅ تم إضافة المصروف', 'success'); } bootstrap.Modal.getInstance(document.getElementById('expenseModal')).hide(); renderExpenses(); } catch (e) { showToast(e.message, 'error'); } finally { hideLoading(); } }
 async function editExpense(id) { showExpenseModal(id); }
@@ -899,47 +925,80 @@ async function deleteExpense(id) { if (currentUser.role !== 'admin') { showToast
 
 // ================== SYNC & SETTINGS (مع الميزات الجديدة) ==================
 async function renderSync(){ document.getElementById('content').innerHTML = `<div class="card"><div class="card-header"><h5>المزامنة مع الشريك</h5></div><div class="card-body"><button class="btn btn-primary w-100 mb-2" onclick="window.exportAllData()"><i class="fas fa-download"></i> تصدير البيانات</button><button class="btn btn-success w-100" onclick="window.importData()"><i class="fas fa-upload"></i> استيراد بيانات</button></div></div>`; }
-async function exportAllData(){ showLoading(); try{ const data = {}; const collections = ['customers','invoices','invoice_items','invoice_payments','expenses','expense_categories','settings','workshop_debts','workers','worker_advances','worker_overtime','worker_payroll_invoices','worker_absences','users']; for(let col of collections) data[col] = await getStore(col); const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `sofazi_backup_${new Date().toISOString().slice(0,19)}.json`; link.click(); showToast('✅ تم تصدير البيانات','success'); } catch(e){ showToast('فشل التصدير','error'); } finally { hideLoading(); } }
+async function exportAllData(){ showLoading(); try{ const data = {}; const collections = ['customers','invoices','invoice_items','invoice_payments','expenses','settings','workshop_debts','workers','worker_advances','worker_overtime','worker_payroll_invoices','worker_absences','users']; for(let col of collections) data[col] = await getStore(col); const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `sofazi_backup_${new Date().toISOString().slice(0,19)}.json`; link.click(); showToast('✅ تم تصدير البيانات','success'); } catch(e){ showToast('فشل التصدير','error'); } finally { hideLoading(); } }
 function importData(){ if (!confirm('تحذير: سيتم استبدال جميع البيانات الحالية بالبيانات المستوردة. هل أنت متأكد؟')) return; const input = document.createElement('input'); input.type = 'file'; input.accept = 'application/json'; input.onchange = async (e)=>{ const file = e.target.files[0]; if(!file) return; showLoading(); try{ const text = await file.text(); const data = JSON.parse(text); for(let key in data){ if(data[key]) await saveStore(key, data[key]); } showToast('✅ تم استيراد البيانات','success'); loadPage('dashboard'); } catch(err){ showToast('فشل الاستيراد: '+err.message,'error'); } finally { hideLoading(); } }; input.click(); }
 
 async function renderSettings(){ 
     showLoading(); 
     try{ 
-        const settingsArr = await getStore('settings'); 
-        const settings = settingsArr[0] || {}; 
-        const categories = await getStore('expense_categories'); 
-        const users = await getStore('users'); 
+        const sharedSettings = await getSharedSettings() || {};
+        const categories = await getSharedCategories();
+        const users = await getStore('users');
         
         const isPWAInstalled = window.matchMedia('(display-mode: standalone)').matches;
         
         document.getElementById('content').innerHTML = `
-        <div class="card mb-3"><div class="card-header"><h5>إعدادات المؤسسة</h5></div><div class="card-body">
-            <input type="text" id="setCompanyNameAr" class="form-control mb-2" placeholder="اسم المؤسسة (عربي)" value="${escapeHtml(settings.companyNameAr||'Sofazi')}">
-            <input type="text" id="setCompanyNameFr" class="form-control mb-2" placeholder="الاسم التجاري (فرنسي)" value="${escapeHtml(settings.companyNameFr||'SOFAZI')}">
-            <input type="text" id="setLegalForm" class="form-control mb-2" placeholder="الصيغة القانونية" value="${escapeHtml(settings.legalForm||'SARL')}">
-            <input type="text" id="setCapital" class="form-control mb-2" placeholder="رأس المال" value="${escapeHtml(settings.capital||'')}">
-            <input type="text" id="setCompanyNif" class="form-control mb-2" placeholder="NIF" value="${escapeHtml(settings.companyNif||'123456789012345')}">
-            <input type="text" id="setCompanyNis" class="form-control mb-2" placeholder="NIS" value="${escapeHtml(settings.companyNis||'123456789012345')}">
-            <input type="text" id="setCompanyRc" class="form-control mb-2" placeholder="RC" value="${escapeHtml(settings.companyRc||'21 B 1234567')}">
-            <input type="text" id="setCompanyArt" class="form-control mb-2" placeholder="ART" value="${escapeHtml(settings.companyArt||'123456789012345')}">
-            <input type="text" id="setCompanyPhone" class="form-control mb-2" placeholder="الهاتف" value="${escapeHtml(settings.companyPhone||'0550 12 34 56')}">
-            <input type="text" id="setCompanyEmail" class="form-control mb-2" placeholder="البريد الإلكتروني" value="${escapeHtml(settings.companyEmail||'contact@sofazi.dz')}">
-            <textarea id="setCompanyAddr" class="form-control mb-2" placeholder="العنوان">${escapeHtml(settings.companyAddr||'Alger, Algérie')}</textarea>
-            <button class="btn btn-primary" onclick="window.saveCompanySettings()">حفظ الإعدادات</button>
-        </div></div>
+        <h4 class="mb-3"><i class="fas fa-cog"></i> الإعدادات</h4>
         
-        <div class="card mb-3"><div class="card-header"><h5>أدوات النظام</h5></div><div class="card-body">
-            <button class="btn btn-warning me-2" onclick="window.clearAppCache()"><i class="fas fa-trash-alt"></i> حذف الكاش وإعادة التشغيل</button>
-            ${isPWAInstalled ? 
-                '<button class="btn btn-secondary" disabled><i class="fas fa-check"></i> التطبيق مثبت (PWA)</button>' : 
-                '<button class="btn btn-success" onclick="window.installPWA()"><i class="fas fa-download"></i> تثبيت التطبيق (PWA)</button>'
-            }
-            <p class="text-muted mt-2 small">لتفعيل تثبيت PWA، افتح التطبيق عبر رابط HTTPS (مثل GitHub Pages). حذف الكاش يحل مشاكل التحديث.</p>
-        </div></div>
-        
-        <div class="card"><div class="card-header d-flex justify-content-between"><h5>تصنيفات المصروف</h5><button class="btn btn-sm btn-primary" onclick="window.showCategoryModal()"><i class="fas fa-plus"></i> إضافة تصنيف</button></div><div class="card-body"><div class="row">${categories.map(cat=>`<div class="col-md-4 mb-2"><div class="card"><div class="card-body"><span class="category-badge" style="background:${cat.color}20; color:${cat.color}">${escapeHtml(cat.name)}</span><p class="small">${escapeHtml(cat.description)}</p><button class="btn btn-sm btn-outline-primary" onclick="window.editCategory('${cat.id}')"><i class="fas fa-edit"></i></button> <button class="btn btn-sm btn-outline-danger" onclick="window.deleteCategory('${cat.id}')"><i class="fas fa-trash"></i></button></div></div></div>`).join('')}</div></div></div>
-        
-        ${currentUser.role==='admin'?`<div class="card mt-3"><div class="card-header d-flex justify-content-between"><h5>إدارة المستخدمين والصلاحيات (جميعهم مديرين)</h5><button class="btn btn-sm btn-primary" onclick="window.showUserModal()"><i class="fas fa-user-plus"></i> إضافة مدير جديد</button></div><div class="card-body"><div class="table-responsive"><table class="table"><thead><tr><th>اسم المستخدم</th><th>الاسم الكامل</th><th>الدور</th><th>الحالة</th><th></th></tr></thead><tbody>${users.map(u=>`<tr><td>${escapeHtml(u.email)}</td><td>${escapeHtml(u.full_name)}</td><td>${u.role==='admin'?'مدير':'شريك'}</td><td>${u.is_active?'نشط':'معطل'}</td><td><button class="btn btn-sm btn-warning" onclick="window.editUser('${u.id}')"><i class="fas fa-edit"></i></button> ${u.id!==users.find(admin=>admin.role==='admin')?.id?`<button class="btn btn-sm btn-danger" onclick="window.deleteUser('${u.id}')"><i class="fas fa-trash"></i></button>`:''}</td></tr>`).join('')}</tbody></table></div></div></div>`:''}
+        <div class="accordion" id="settingsAccordion">
+            <!-- قسم معلومات المؤسسة -->
+            <div class="accordion-item">
+                <h2 class="accordion-header"><button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCompany">🏢 معلومات المؤسسة</button></h2>
+                <div id="collapseCompany" class="accordion-collapse collapse show" data-bs-parent="#settingsAccordion">
+                    <div class="accordion-body">
+                        <input type="text" id="setCompanyNameAr" class="form-control mb-2" placeholder="اسم المؤسسة (عربي)" value="${escapeHtml(sharedSettings.companyNameAr||'Sofazi')}">
+                        <input type="text" id="setCompanyNameFr" class="form-control mb-2" placeholder="الاسم التجاري (فرنسي)" value="${escapeHtml(sharedSettings.companyNameFr||'SOFAZI')}">
+                        <input type="text" id="setLegalForm" class="form-control mb-2" placeholder="الصيغة القانونية" value="${escapeHtml(sharedSettings.legalForm||'SARL')}">
+                        <input type="text" id="setCapital" class="form-control mb-2" placeholder="رأس المال" value="${escapeHtml(sharedSettings.capital||'')}">
+                        <input type="text" id="setCompanyNif" class="form-control mb-2" placeholder="NIF" value="${escapeHtml(sharedSettings.companyNif||'123456789012345')}">
+                        <input type="text" id="setCompanyNis" class="form-control mb-2" placeholder="NIS" value="${escapeHtml(sharedSettings.companyNis||'123456789012345')}">
+                        <input type="text" id="setCompanyRc" class="form-control mb-2" placeholder="RC" value="${escapeHtml(sharedSettings.companyRc||'21 B 1234567')}">
+                        <input type="text" id="setCompanyArt" class="form-control mb-2" placeholder="ART" value="${escapeHtml(sharedSettings.companyArt||'123456789012345')}">
+                        <input type="text" id="setCompanyPhone" class="form-control mb-2" placeholder="الهاتف" value="${escapeHtml(sharedSettings.companyPhone||'0550 12 34 56')}">
+                        <input type="text" id="setCompanyEmail" class="form-control mb-2" placeholder="البريد الإلكتروني" value="${escapeHtml(sharedSettings.companyEmail||'contact@sofazi.dz')}">
+                        <textarea id="setCompanyAddr" class="form-control mb-2" placeholder="العنوان">${escapeHtml(sharedSettings.companyAddr||'Alger, Algérie')}</textarea>
+                        <button class="btn btn-primary" onclick="window.saveCompanySettings()">حفظ التغييرات</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- قسم أدوات النظام -->
+            <div class="accordion-item">
+                <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTools">🛠️ أدوات النظام</button></h2>
+                <div id="collapseTools" class="accordion-collapse collapse" data-bs-parent="#settingsAccordion">
+                    <div class="accordion-body">
+                        <button class="btn btn-warning me-2" onclick="window.clearAppCache()"><i class="fas fa-trash-alt"></i> حذف الكاش وإعادة التشغيل</button>
+                        ${isPWAInstalled ? 
+                            '<button class="btn btn-secondary" disabled><i class="fas fa-check"></i> التطبيق مثبت (PWA)</button>' : 
+                            '<button class="btn btn-success" onclick="window.installPWA()"><i class="fas fa-download"></i> تثبيت التطبيق (PWA)</button>'
+                        }
+                        <p class="text-muted mt-2 small">لتفعيل تثبيت PWA، افتح التطبيق عبر رابط HTTPS (مثل GitHub Pages). حذف الكاش يحل مشاكل التحديث.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- قسم تصنيفات المصروف -->
+            <div class="accordion-item">
+                <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCategories">📂 تصنيفات المصروف</button></h2>
+                <div id="collapseCategories" class="accordion-collapse collapse" data-bs-parent="#settingsAccordion">
+                    <div class="accordion-body">
+                        <button class="btn btn-sm btn-primary mb-3" onclick="window.showCategoryModal()"><i class="fas fa-plus"></i> إضافة تصنيف</button>
+                        <div class="row">${categories.map(cat=>`<div class="col-md-4 mb-2"><div class="card"><div class="card-body"><span class="category-badge" style="background:${cat.color}20; color:${cat.color}">${escapeHtml(cat.name)}</span><p class="small">${escapeHtml(cat.description||'')}</p><button class="btn btn-sm btn-outline-primary" onclick="window.editCategory('${cat.id}')"><i class="fas fa-edit"></i></button> <button class="btn btn-sm btn-outline-danger" onclick="window.deleteCategory('${cat.id}')"><i class="fas fa-trash"></i></button></div></div></div>`).join('')}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- قسم إدارة المستخدمين -->
+            <div class="accordion-item">
+                <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseUsers">👥 إدارة المستخدمين</button></h2>
+                <div id="collapseUsers" class="accordion-collapse collapse" data-bs-parent="#settingsAccordion">
+                    <div class="accordion-body">
+                        <button class="btn btn-sm btn-primary mb-3" onclick="window.showUserModal()"><i class="fas fa-user-plus"></i> إضافة مدير جديد</button>
+                        <div class="table-responsive"><table class="table"><thead><tr><th>اسم المستخدم</th><th>الاسم الكامل</th><th>الدور</th><th>الحالة</th><th></th></tr></thead><tbody>${users.map(u=>`<tr><td>${escapeHtml(u.email)}</td><td>${escapeHtml(u.full_name)}</td><td>${u.role==='admin'?'مدير':'شريك'}</td><td>${u.is_active?'نشط':'معطل'}</td><td><button class="btn btn-sm btn-warning" onclick="window.editUser('${u.id}')"><i class="fas fa-edit"></i></button> ${u.id!==users.find(admin=>admin.role==='admin')?.id?`<button class="btn btn-sm btn-danger" onclick="window.deleteUser('${u.id}')"><i class="fas fa-trash"></i></button>`:''}</td></tr>`).join('')}</tbody></table></div>
+                    </div>
+                </div>
+            </div>
+        </div>
         `; 
     } catch(e){ showToast('فشل تحميل الإعدادات','error'); } finally { hideLoading(); 
 }}
@@ -980,12 +1039,12 @@ function installPWA() {
     }
 }
 
-async function saveCompanySettings(){ showLoading(); try{ let settingsArr = await getStore('settings'); const settings = settingsArr[0] || { id: 'settings' }; settings.companyNameAr = document.getElementById('setCompanyNameAr').value; settings.companyNameFr = document.getElementById('setCompanyNameFr').value; settings.legalForm = document.getElementById('setLegalForm').value; settings.capital = document.getElementById('setCapital').value; settings.companyNif = document.getElementById('setCompanyNif').value; settings.companyNis = document.getElementById('setCompanyNis').value; settings.companyRc = document.getElementById('setCompanyRc').value; settings.companyArt = document.getElementById('setCompanyArt').value; settings.companyPhone = document.getElementById('setCompanyPhone').value; settings.companyEmail = document.getElementById('setCompanyEmail').value; settings.companyAddr = document.getElementById('setCompanyAddr').value; if(settingsArr.length===0) settingsArr.push(settings); else settingsArr[0] = settings; await saveStore('settings', settingsArr); updateTopBarCompanyName(); showToast('✅ تم حفظ الإعدادات','success'); } catch(e){ showToast(e.message,'error'); } finally { hideLoading(); } }
+async function saveCompanySettings(){ showLoading(); try{ const settings = { companyNameAr: document.getElementById('setCompanyNameAr').value, companyNameFr: document.getElementById('setCompanyNameFr').value, legalForm: document.getElementById('setLegalForm').value, capital: document.getElementById('setCapital').value, companyNif: document.getElementById('setCompanyNif').value, companyNis: document.getElementById('setCompanyNis').value, companyRc: document.getElementById('setCompanyRc').value, companyArt: document.getElementById('setCompanyArt').value, companyPhone: document.getElementById('setCompanyPhone').value, companyEmail: document.getElementById('setCompanyEmail').value, companyAddr: document.getElementById('setCompanyAddr').value, darkMode: document.body.classList.contains('dark-mode'), invoiceCounter: (await getSharedSettings())?.invoiceCounter || 1 }; await saveSharedSettings(settings); updateTopBarCompanyName(); showToast('✅ تم حفظ الإعدادات','success'); } catch(e){ showToast(e.message,'error'); } finally { hideLoading(); } }
 
-async function showCategoryModal(id=null){ let cat = id ? (await getStore('expense_categories')).find(c=>c.id==id) : null; const modalHtml = `<div class="modal fade" id="categoryModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5>${cat?'تعديل تصنيف':'إضافة تصنيف'}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="text" id="catName" class="form-control mb-2" placeholder="اسم التصنيف *" value="${cat?escapeHtml(cat.name):''}"><input type="color" id="catColor" class="form-control form-control-color mb-2" value="${cat?.color||'#1e3a5f'}"><textarea id="catDesc" class="form-control" placeholder="وصف التصنيف">${cat?escapeHtml(cat.description):''}</textarea></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button><button class="btn btn-primary" onclick="window.saveCategory('${id||0}')">حفظ</button></div></div></div></div>`; document.body.insertAdjacentHTML('beforeend', modalHtml); const modal = new bootstrap.Modal(document.getElementById('categoryModal')); modal.show(); document.getElementById('categoryModal').addEventListener('hidden.bs.modal', () => document.getElementById('categoryModal')?.remove()); }
-async function saveCategory(id){ const name = document.getElementById('catName').value.trim(); if(!name){ showToast('اسم التصنيف مطلوب','error'); return; } showLoading(); try{ let categories = await getStore('expense_categories'); if(id !== '0'){ const index = categories.findIndex(c=>c.id==id); if(index!==-1){ categories[index].name = name; categories[index].color = document.getElementById('catColor').value; categories[index].description = document.getElementById('catDesc').value; await saveStore('expense_categories', categories); } } else { categories.push({ id: generateUUID(), name, color: document.getElementById('catColor').value, description: document.getElementById('catDesc').value }); await saveStore('expense_categories', categories); } bootstrap.Modal.getInstance(document.getElementById('categoryModal')).hide(); renderSettings(); showToast('✅ تم حفظ التصنيف','success'); } catch(e){ showToast(e.message,'error'); } finally { hideLoading(); } }
+async function showCategoryModal(id=null){ let cat = id ? (await getSharedCategories()).find(c=>c.id==id) : null; const modalHtml = `<div class="modal fade" id="categoryModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5>${cat?'تعديل تصنيف':'إضافة تصنيف'}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="text" id="catName" class="form-control mb-2" placeholder="اسم التصنيف *" value="${cat?escapeHtml(cat.name):''}"><input type="color" id="catColor" class="form-control form-control-color mb-2" value="${cat?.color||'#1e3a5f'}"><textarea id="catDesc" class="form-control" placeholder="وصف التصنيف">${cat?escapeHtml(cat.description):''}</textarea></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button><button class="btn btn-primary" onclick="window.saveCategory('${id||0}')">حفظ</button></div></div></div></div>`; document.body.insertAdjacentHTML('beforeend', modalHtml); const modal = new bootstrap.Modal(document.getElementById('categoryModal')); modal.show(); document.getElementById('categoryModal').addEventListener('hidden.bs.modal', () => document.getElementById('categoryModal')?.remove()); }
+async function saveCategory(id){ const name = document.getElementById('catName').value.trim(); if(!name){ showToast('اسم التصنيف مطلوب','error'); return; } showLoading(); try{ let categories = await getSharedCategories(); if(id !== '0'){ const index = categories.findIndex(c=>c.id==id); if(index!==-1){ categories[index].name = name; categories[index].color = document.getElementById('catColor').value; categories[index].description = document.getElementById('catDesc').value; await saveSharedCategories(categories); } } else { categories.push({ id: generateUUID(), name, color: document.getElementById('catColor').value, description: document.getElementById('catDesc').value }); await saveSharedCategories(categories); } bootstrap.Modal.getInstance(document.getElementById('categoryModal')).hide(); renderSettings(); showToast('✅ تم حفظ التصنيف','success'); } catch(e){ showToast(e.message,'error'); } finally { hideLoading(); } }
 async function editCategory(id){ showCategoryModal(id); }
-async function deleteCategory(id){ if(currentUser.role !== 'admin'){ showToast('غير مصرح','error'); return; } if(confirm('هل أنت متأكد من حذف هذا التصنيف؟')){ showLoading(); try{ let categories = await getStore('expense_categories'); categories = categories.filter(c=>c.id!=id); await saveStore('expense_categories', categories); renderSettings(); showToast('🗑️ تم حذف التصنيف','success'); } catch(e){ showToast(e.message,'error'); } finally { hideLoading(); } } }
+async function deleteCategory(id){ if(currentUser.role !== 'admin'){ showToast('غير مصرح','error'); return; } if(confirm('هل أنت متأكد من حذف هذا التصنيف؟')){ showLoading(); try{ let categories = await getSharedCategories(); categories = categories.filter(c=>c.id!=id); await saveSharedCategories(categories); renderSettings(); showToast('🗑️ تم حذف التصنيف','success'); } catch(e){ showToast(e.message,'error'); } finally { hideLoading(); } } }
 
 async function showUserModal(id=null){ let user = id ? (await getStore('users')).find(u=>u.id==id) : null; const modalHtml = `<div class="modal fade" id="userModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5>${user?'تعديل مدير':'إضافة مدير جديد'}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="email" id="userEmail" class="form-control mb-2" placeholder="البريد الإلكتروني *" value="${user?escapeHtml(user.email):''}"><input type="text" id="userFullName" class="form-control mb-2" placeholder="الاسم الكامل *" value="${user?escapeHtml(user.full_name):''}"><input type="password" id="userPassword" class="form-control mb-2" placeholder="كلمة المرور ${user?'(اتركها فارغة لعدم التغيير)':'*'}"></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button><button class="btn btn-primary" onclick="window.saveUser('${id||0}')">حفظ</button></div></div></div></div>`; document.body.insertAdjacentHTML('beforeend', modalHtml); const modal = new bootstrap.Modal(document.getElementById('userModal')); modal.show(); document.getElementById('userModal').addEventListener('hidden.bs.modal', () => document.getElementById('userModal')?.remove()); }
 async function saveUser(id){ if(currentUser.role !== 'admin'){ showToast('غير مصرح','error'); return; } const email = document.getElementById('userEmail').value.trim(); const fullName = document.getElementById('userFullName').value.trim(); if(!email || !fullName){ showToast('البريد الإلكتروني والاسم الكامل مطلوبان','error'); return; } showLoading(); try{ let users = await getStore('users'); if(id !== '0'){ const index = users.findIndex(u=>u.id==id); if(index===-1) throw new Error('المستخدم غير موجود'); users[index].email = email; users[index].full_name = fullName; users[index].role = 'admin'; users[index].is_active = true; const newPass = document.getElementById('userPassword').value; if(newPass) { showToast('تغيير كلمة المرور يتطلب تعديلاً يدوياً في Firebase Console', 'info'); } await saveStore('users', users); showToast('تم تعديل المدير','success'); } else { const password = document.getElementById('userPassword').value; if(!password) throw new Error('كلمة المرور مطلوبة'); if(users.find(u=>u.email===email)) throw new Error('البريد الإلكتروني موجود بالفعل'); const userCred = await auth.createUserWithEmailAndPassword(email, password); const newUser = { id: userCred.user.uid, email, full_name: fullName, role: 'admin', is_active: true, created_at: new Date().toISOString() }; users.push(newUser); await saveStore('users', users); showToast('تم إضافة المدير الجديد','success'); } bootstrap.Modal.getInstance(document.getElementById('userModal')).hide(); renderSettings(); } catch(e){ showToast(e.message,'error'); } finally { hideLoading(); } }
@@ -998,22 +1057,13 @@ async function renderDashboard(){ showLoading(); try{ let customers = await getS
 // ================== NAVIGATION ==================
 async function loadPage(page){ if(!currentUser){ showLogin(); return; } document.getElementById('sidebar').classList.remove('open'); switch(page){ case 'dashboard': await renderDashboard(); break; case 'customers': await renderCustomers(); break; case 'invoices': await renderInvoices(); break; case 'invoicesList': await renderInvoicesList(); break; case 'workshopDebts': await renderWorkshopDebts(); break; case 'workers': await renderWorkers(); break; case 'expenses': await renderExpenses(); break; case 'sync': await renderSync(); break; case 'settings': await renderSettings(); break; default: await renderDashboard(); } document.querySelectorAll('.sidebar a').forEach(link=>{ link.classList.remove('active'); if(link.getAttribute('data-page')===page) link.classList.add('active'); }); }
 
-function updateTopBarCompanyName() { (async () => { const settings = await getStore('settings'); if (settings.length > 0 && settings[0].companyNameAr) { document.getElementById('companyNameTop').innerHTML = `${escapeHtml(settings[0].companyNameAr)} <span style="font-size:0.7rem;">v1.0</span>`; } })(); }
+function updateTopBarCompanyName() { (async () => { const settings = await getSharedSettings(); if (settings?.companyNameAr) { document.getElementById('companyNameTop').innerHTML = `${escapeHtml(settings.companyNameAr)} <span style="font-size:0.7rem;">v1.1</span>`; } })(); }
 
-// ================== FIREBASE SETUP HANDLER (مع كود افتراضي) ==================
+// ================== FIREBASE SETUP HANDLER ==================
 function setupFirebase() {
     let savedConfig = localStorage.getItem('firebaseConfig');
     if (!savedConfig) {
-        // الإعدادات الافتراضية لمشروع Sofazi
-        const defaultConfig = {
-            apiKey: "AIzaSyCsbMKBCYUACO-8-fbJv4SPLClrL-tFoGo",
-            authDomain: "sofazi.firebaseapp.com",
-            projectId: "sofazi",
-            storageBucket: "sofazi.firebasestorage.app",
-            messagingSenderId: "481028905576",
-            appId: "1:481028905576:web:174a0da0566dea134779dd",
-            measurementId: "G-3MT9K98E5V"
-        };
+        const defaultConfig = { apiKey: "AIzaSyCsbMKBCYUACO-8-fbJv4SPLClrL-tFoGo", authDomain: "sofazi.firebaseapp.com", projectId: "sofazi", storageBucket: "sofazi.firebasestorage.app", messagingSenderId: "481028905576", appId: "1:481028905576:web:174a0da0566dea134779dd", measurementId: "G-3MT9K98E5V" };
         savedConfig = JSON.stringify(defaultConfig);
         localStorage.setItem('firebaseConfig', savedConfig);
     }
@@ -1022,15 +1072,11 @@ function setupFirebase() {
         firebase.initializeApp(config);
         db = firebase.firestore();
         auth = firebase.auth();
-        // تفعيل التخزين المؤقت (قد يسبب مشاكل على بعض الهواتف، لذا نضعه في try)
-        try {
-            db.enablePersistence().catch(err => { if (err.code == 'failed-precondition') console.warn('تعدد التبويبات'); });
-        } catch(e) {}
+        try { db.enablePersistence().catch(err => { if (err.code == 'failed-precondition') console.warn('تعدد التبويبات'); }); } catch(e) {}
         firebaseInitialized = true;
         restoreSession();
         return;
     } catch(e) { console.error(e); }
-    // إذا فشل التهيئة، نظهر شاشة التهيئة اليدوية
     document.body.classList.add('login-active');
     document.getElementById('content').innerHTML = `
         <div class="firebase-setup-container"><div class="card firebase-setup-card"><div class="card-body p-4">
@@ -1041,11 +1087,7 @@ function setupFirebase() {
         </div></div></div>
     `;
     document.getElementById('saveFirebaseBtn').addEventListener('click', () => {
-        try {
-            const cfg = document.getElementById('firebaseConfigInput').value;
-            localStorage.setItem('firebaseConfig', cfg);
-            location.reload();
-        } catch(e) { showToast('خطأ في التنسيق', 'error'); }
+        try { const cfg = document.getElementById('firebaseConfigInput').value; localStorage.setItem('firebaseConfig', cfg); location.reload(); } catch(e) { showToast('خطأ في التنسيق', 'error'); }
     });
 }
 
@@ -1065,7 +1107,7 @@ window.clearAppCache=clearAppCache; window.installPWA=installPWA;
 document.getElementById('menuToggle').addEventListener('click', e=>{ e.stopPropagation(); document.getElementById('sidebar').classList.toggle('open'); });
 document.addEventListener('click', function(event){ const sidebar = document.getElementById('sidebar'); const menuToggle = document.getElementById('menuToggle'); if(sidebar.classList.contains('open') && !sidebar.contains(event.target) && event.target!==menuToggle && !menuToggle.contains(event.target)) sidebar.classList.remove('open'); });
 document.getElementById('logoutBtn').addEventListener('click', logout);
-document.getElementById('darkModeToggle').addEventListener('click', async ()=>{ document.body.classList.toggle('dark-mode'); const settingsArr = await getStore('settings'); if(settingsArr.length){ settingsArr[0].darkMode = document.body.classList.contains('dark-mode'); await saveStore('settings', settingsArr); } });
+document.getElementById('darkModeToggle').addEventListener('click', async ()=>{ document.body.classList.toggle('dark-mode'); const settings = await getSharedSettings(); if(settings){ settings.darkMode = document.body.classList.contains('dark-mode'); await saveSharedSettings(settings); } });
 document.querySelectorAll('.sidebar a').forEach(link=>{ link.addEventListener('click', (e)=>{ e.preventDefault(); const page = link.getAttribute('data-page'); if(page) loadPage(page); }); });
 
 setupFirebase();
